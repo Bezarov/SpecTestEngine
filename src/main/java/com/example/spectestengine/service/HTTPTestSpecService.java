@@ -21,11 +21,11 @@ public interface HTTPTestSpecService {
 
     TestSpecWithRunsDTO getSpecWithRuns(Long specId);
 
-    TestSpecDTO updateSpecById(String specId, String specJson);
+    TestSpecDTO updateSpecById(Long specId, String specJson);
 
     TestSpecDTO updateSpecByName(String specName, String specJson);
 
-    TestSpecDTO deleteSpecById(String specId, String specJson);
+    TestSpecDTO deleteSpecById(Long specId, String specJson);
 
     TestSpecDTO deleteSpecByName(String specName, String specJson);
 }

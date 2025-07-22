@@ -22,6 +22,7 @@ import java.util.List;
 
 @Service
 public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
+    private static final String SPEC_NOT_FOUND_LOG = "Spec not found with";
     private final TestSpecRepository testSpecRepository;
     private final TestRunRepository testRunRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -69,7 +70,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
         return testSpecRepository.findById(specId)
                 .map(this::runTestAndSaveResult)
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Spec not found with ID: " + specId));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specId));
     }
 
     @Override
@@ -77,7 +78,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
         return testSpecRepository.findByName(specName)
                 .map(this::runTestAndSaveResult)
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Spec not found with name: " + specName));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specName));
     }
 
     @Override
@@ -106,21 +107,18 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                                 .toList()
                 ))
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Spec not found"));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specId));
     }
 
     @Override
-    public TestSpecDTO updateSpecById(String specId, String specJson) {
-        Long id = Long.parseLong(specId);
-
-        return testSpecRepository.findById(id)
+    public TestSpecDTO updateSpecById(Long specId, String specJson) {
+        return testSpecRepository.findById(specId)
                 .map(spec -> {
                     spec.setSpec(specJson);
-                    TestSpecEntity updated = testSpecRepository.save(spec);
-                    return SpecMapper.mapToDTO(spec);
+                    return SpecMapper.mapToDTO(testSpecRepository.save(spec));
                 })
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Spec not found with ID: " + id));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specId));
     }
 
     @Override
@@ -128,24 +126,21 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
         return testSpecRepository.findByName(specName)
                 .map(spec -> {
                     spec.setSpec(specJson);
-                    TestSpecEntity updated = testSpecRepository.save(spec);
-                    return SpecMapper.mapToDTO(spec);
+                    return SpecMapper.mapToDTO(testSpecRepository.save(spec));
                 })
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Spec not found with name: " + specName));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specName));
     }
 
     @Override
-    public TestSpecDTO deleteSpecById(String specId, String specJson) {
-        Long id = Long.parseLong(specId);
-
-        return testSpecRepository.findById(id)
+    public TestSpecDTO deleteSpecById(Long specId, String specJson) {
+        return testSpecRepository.findById(specId)
                 .map(spec -> {
                     testSpecRepository.delete(spec);
                     return SpecMapper.mapToDTO(spec);
                 })
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Spec not found with ID: " + id));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specId));
     }
 
     @Override
@@ -156,13 +151,13 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                     return SpecMapper.mapToDTO(spec);
                 })
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Spec not found with name: " + specName));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specName));
     }
 
     private TestRunResultDTO runTestAndSaveResult(TestSpecEntity testSpecEntity) {
         LocalDateTime startedAt = LocalDateTime.now();
         String status;
-        String log;
+        String testLog;
 
         try {
             JsonNode jsonNode = objectMapper.readTree(testSpecEntity.getSpec());
@@ -191,10 +186,10 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                 resultLog.append("Status FAILED\n");
             }
 
-            log = resultLog.toString();
-        } catch (Exception ex) {
+            testLog = resultLog.toString();
+        } catch (Exception exception) {
             status = "ERROR";
-            log = "Test failed with error: " + ex.getMessage();
+            testLog = "Test failed with error: " + exception.getMessage();
         }
 
         LocalDateTime finishedAt = LocalDateTime.now();
@@ -202,13 +197,13 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
         TestRunEntity run = TestRunEntity.builder()
                 .spec(testSpecEntity)
                 .status(status)
-                .log(log)
+                .log(testLog)
                 .startedAt(startedAt)
                 .finishedAt(finishedAt)
                 .build();
 
         TestRunEntity savedRun = testRunRepository.save(run);
 
-        return new TestRunResultDTO(savedRun.getId(), testSpecEntity.getId(), status, log);
+        return new TestRunResultDTO(savedRun.getId(), testSpecEntity.getId(), status, testLog);
     }
 }
