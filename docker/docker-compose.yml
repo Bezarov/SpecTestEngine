@@ -10,6 +10,9 @@ services:
       POSTGRES_PASSWORD: spectestdb
       POSTGRES_DB: spectestdb
     volumes:
-      - appregistry-postgres-data:/var/lib/postgresql/data
+      - spectestengine-postgres-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+
+volumes:
+  spectestengine-postgres-data:
