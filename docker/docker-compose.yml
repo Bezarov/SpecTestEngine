@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  # Database for SpecTestEngine-Component
+  postgres-appregistry-component:
+    image: postgres:latest
+    container_name: SpecTest-PostgreSQL
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: spectestdb
+      POSTGRES_DB: spectestdb
+    volumes:
+      - appregistry-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
