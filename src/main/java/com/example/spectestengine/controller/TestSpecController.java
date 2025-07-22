@@ -86,7 +86,7 @@ public class TestSpecController {
     }
 
     @PutMapping("/by-id")
-    public ResponseEntity<TestSpecDTO> updateSpecById(@RequestParam String specId, @RequestBody String specJson) {
+    public ResponseEntity<TestSpecDTO> updateSpecById(@RequestParam Long specId, @RequestBody String specJson) {
         log.debug("Received PUT request to update test specification: {} with spec id: {}", specJson, specId);
         TestSpecDTO testSpecEntity = httpTestSpecService.updateSpecById(specId, specJson);
         log.debug(RESPONSE_LOG, testSpecEntity);
@@ -102,7 +102,7 @@ public class TestSpecController {
     }
 
     @DeleteMapping("/by-id")
-    public ResponseEntity<TestSpecDTO> deleteSpecById(@RequestParam String specId, @RequestBody String specJson) {
+    public ResponseEntity<TestSpecDTO> deleteSpecById(@RequestParam Long specId, @RequestBody String specJson) {
         log.debug("Received DELETE request to remove test specification: {} with spec id: {}", specJson, specId);
         TestSpecDTO testSpecDTO = httpTestSpecService.deleteSpecById(specId, specJson);
         log.debug(RESPONSE_LOG, testSpecDTO);
