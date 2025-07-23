@@ -1,5 +1,9 @@
 package com.example.spectestengine.dto;
 
-public record TestRunResultDTO(Long runId, Long specId, String status, String log) {
+import com.fasterxml.jackson.databind.JsonNode;
+
+import java.time.LocalDateTime;
+
+public record TestRunResultDTO(Long runId, Long specId, String overalTestStatus, JsonNode log, LocalDateTime startedAt, LocalDateTime finishedAt) {
 
 }

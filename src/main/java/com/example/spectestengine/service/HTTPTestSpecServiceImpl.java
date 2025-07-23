@@ -4,13 +4,20 @@ import com.example.spectestengine.dto.TestRunDTO;
 import com.example.spectestengine.dto.TestRunResultDTO;
 import com.example.spectestengine.dto.TestSpecDTO;
 import com.example.spectestengine.dto.TestSpecWithRunsDTO;
+import com.example.spectestengine.handler.BodyCheckHandler;
+import com.example.spectestengine.handler.JsonPathCheckHandler;
+import com.example.spectestengine.handler.MediaTypeCheckHandler;
+import com.example.spectestengine.handler.StatusCodeCheckHandler;
+import com.example.spectestengine.handler.TestCheckHandler;
 import com.example.spectestengine.model.TestRunEntity;
 import com.example.spectestengine.model.TestSpecEntity;
 import com.example.spectestengine.repository.TestRunRepository;
 import com.example.spectestengine.repository.TestSpecRepository;
+import com.example.spectestengine.utils.JsonMapper;
 import com.example.spectestengine.utils.SpecMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import org.springframework.http.HttpStatus;
@@ -18,14 +25,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
 public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
-    private static final String SPEC_NOT_FOUND_LOG = "Spec not found with";
+    private static final String SPEC_NOT_FOUND_LOG = "Specification not found with ";
     private final TestSpecRepository testSpecRepository;
     private final TestRunRepository testRunRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private final List<TestCheckHandler> checkHandlers = List.of(
+            new StatusCodeCheckHandler(), new MediaTypeCheckHandler(),
+            new BodyCheckHandler(), new JsonPathCheckHandler()
+    );
 
     public HTTPTestSpecServiceImpl(TestSpecRepository testSpecRepository, TestRunRepository testRunRepository) {
         this.testSpecRepository = testSpecRepository;
@@ -37,7 +50,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
         testSpecRepository.findByName(specName)
                 .ifPresent(existing -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Spec with name '" + specName + "' already exists");
+                            "Specification with name '" + specName + "' already exists");
                 });
 
         TestSpecEntity entity = TestSpecEntity.builder()
@@ -47,6 +60,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                 .build();
 
         TestSpecEntity saved = testSpecRepository.save(entity);
+
 
         return SpecMapper.mapToDTO(saved);
     }
@@ -70,7 +84,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
         return testSpecRepository.findById(specId)
                 .map(this::runTestAndSaveResult)
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specId));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "id: " + specId));
     }
 
     @Override
@@ -78,7 +92,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
         return testSpecRepository.findByName(specName)
                 .map(this::runTestAndSaveResult)
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specName));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "name: " + specName));
     }
 
     @Override
@@ -94,20 +108,20 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                 .map(spec -> new TestSpecWithRunsDTO(
                         spec.getId(),
                         spec.getName(),
-                        spec.getSpec(),
+                        JsonMapper.fromJson(spec.getSpec()),
                         spec.getCreatedAt(),
                         spec.getRuns().stream()
                                 .map(run -> new TestRunDTO(
                                         run.getId(),
                                         run.getStatus(),
-                                        run.getLog(),
+                                        JsonMapper.fromJson(run.getLog()),
                                         run.getStartedAt(),
                                         run.getFinishedAt()
                                 ))
                                 .toList()
                 ))
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specId));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "id: " + specId));
     }
 
     @Override
@@ -118,7 +132,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                     return SpecMapper.mapToDTO(testSpecRepository.save(spec));
                 })
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specId));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "id: " + specId));
     }
 
     @Override
@@ -129,7 +143,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                     return SpecMapper.mapToDTO(testSpecRepository.save(spec));
                 })
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specName));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "name: " + specName));
     }
 
     @Override
@@ -140,7 +154,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                     return SpecMapper.mapToDTO(spec);
                 })
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specId));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "id: " + specId));
     }
 
     @Override
@@ -151,59 +165,59 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                     return SpecMapper.mapToDTO(spec);
                 })
                 .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + specName));
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "name: " + specName));
     }
 
-    private TestRunResultDTO runTestAndSaveResult(TestSpecEntity testSpecEntity) {
+    private TestRunResultDTO runTestAndSaveResult(TestSpecEntity specEntity) {
         LocalDateTime startedAt = LocalDateTime.now();
-        String status;
-        String testLog;
+        String overalTestStatus = "----------------PASS-------------------";
+        ObjectNode logNode = objectMapper.createObjectNode();
 
         try {
-            JsonNode jsonNode = objectMapper.readTree(testSpecEntity.getSpec());
-            String url = jsonNode.get("url").asText();
-            String method = jsonNode.get("method").asText().toUpperCase();
-            int expectedStatus = jsonNode.get("expectedStatus").asInt();
+            JsonNode specification = objectMapper.readTree(specEntity.getSpec());
+            String url = specification.get("url").asText();
+            String method = specification.get("method").asText().toUpperCase();
+            logNode.put("url", url);
+            logNode.put("method", method);
 
-            Response response = switch (method) {
-                case "POST" -> RestAssured.given().body(jsonNode.get("body").toString()).post(url);
-                case "PUT" -> RestAssured.given().body(jsonNode.get("body").toString()).put(url);
-                case "DELETE" -> RestAssured.delete(url);
-                default -> RestAssured.get(url);
-            };
+            Response response = executeHttpRequest(specification, url, method);
 
-            StringBuilder resultLog = new StringBuilder();
-            resultLog.append("URL: ").append(url).append("\n");
-            resultLog.append("Method: ").append(method).append("\n");
-            resultLog.append("Expected Status: ").append(expectedStatus).append("\n");
-            resultLog.append("Actual Status: ").append(response.statusCode()).append("\n");
+            for (TestCheckHandler handler : checkHandlers)
+                overalTestStatus = handler.handle(specification, response, logNode, overalTestStatus);
 
-            if (response.statusCode() == expectedStatus) {
-                status = "PASS";
-                resultLog.append("Status PASSED\n");
-            } else {
-                status = "FAIL";
-                resultLog.append("Status FAILED\n");
-            }
-
-            testLog = resultLog.toString();
         } catch (Exception exception) {
-            status = "ERROR";
-            testLog = "Test failed with error: " + exception.getMessage();
+            overalTestStatus = "----------------ERROR-------------------";
+            logNode.put("error", exception.getMessage());
         }
 
         LocalDateTime finishedAt = LocalDateTime.now();
 
         TestRunEntity run = TestRunEntity.builder()
-                .spec(testSpecEntity)
-                .status(status)
-                .log(testLog)
+                .spec(specEntity)
+                .status(overalTestStatus)
+                .log(logNode.toString())
                 .startedAt(startedAt)
                 .finishedAt(finishedAt)
                 .build();
 
-        TestRunEntity savedRun = testRunRepository.save(run);
+        TestRunEntity saved = testRunRepository.save(run);
 
-        return new TestRunResultDTO(savedRun.getId(), testSpecEntity.getId(), status, testLog);
+        return new TestRunResultDTO(
+                saved.getId(),
+                specEntity.getId(),
+                overalTestStatus,
+                JsonMapper.fromJson(logNode.toString()),
+                run.getStartedAt().truncatedTo(ChronoUnit.SECONDS),
+                run.getFinishedAt().truncatedTo(ChronoUnit.SECONDS)
+        );
+    }
+
+    private Response executeHttpRequest(JsonNode spec, String url, String method) {
+        return switch (method) {
+            case "POST" -> RestAssured.given().body(spec.get("body").toString()).post(url);
+            case "PUT" -> RestAssured.given().body(spec.get("body").toString()).put(url);
+            case "DELETE" -> RestAssured.delete(url);
+            default -> RestAssured.get(url);
+        };
     }
 }
