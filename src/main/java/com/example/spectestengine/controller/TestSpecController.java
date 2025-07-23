@@ -1,6 +1,5 @@
 package com.example.spectestengine.controller;
 
-import com.example.spectestengine.dto.TestRunResultDTO;
 import com.example.spectestengine.dto.TestSpecDTO;
 import com.example.spectestengine.dto.TestSpecWithRunsDTO;
 import com.example.spectestengine.service.HTTPTestSpecService;
@@ -43,38 +42,6 @@ public class TestSpecController {
         List<TestSpecDTO> specDTOList = httpTestSpecService.getAllTestSpec();
         log.debug(RESPONSE_LOG, specDTOList);
         return ResponseEntity.ok(specDTOList);
-    }
-
-    @GetMapping("/all/run")
-    public ResponseEntity<List<TestRunResultDTO>> runAll() {
-        log.debug("Received GET request to RUN all tests specification ");
-        List<TestRunResultDTO> resultDTOS = httpTestSpecService.runAllTestsSpec();
-        log.debug(RESPONSE_LOG, resultDTOS);
-        return ResponseEntity.ok(resultDTOS);
-    }
-
-    @GetMapping("/by-id/{specId}/run")
-    public ResponseEntity<TestRunResultDTO> runById(@PathVariable Long specId) {
-        log.debug("Received GET request to RUN test specification with id: {}", specId);
-        TestRunResultDTO resultDTO = httpTestSpecService.runTestBySpecId(specId);
-        log.debug(RESPONSE_LOG, resultDTO);
-        return ResponseEntity.ok(resultDTO);
-    }
-
-    @GetMapping("/by-name/{specName}/run")
-    public ResponseEntity<TestRunResultDTO> runByName(@PathVariable String specName) {
-        log.debug("Received GET request to RUN test specification with name: {}", specName);
-        TestRunResultDTO resultDTO = httpTestSpecService.runTestWithSpecName(specName);
-        log.debug(RESPONSE_LOG, resultDTO);
-        return ResponseEntity.ok(resultDTO);
-    }
-
-    @GetMapping("/range/run")
-    public ResponseEntity<List<TestRunResultDTO>> runInRange(@RequestParam Long fromId, @RequestParam Long toId) {
-        log.debug("Received GET request to RUN in range tests specification from id: {}, to id: {}", fromId, toId);
-        List<TestRunResultDTO> resultDTOS = httpTestSpecService.runTestsInSpecRangeId(fromId, toId);
-        log.debug(RESPONSE_LOG, resultDTOS);
-        return ResponseEntity.ok(resultDTOS);
     }
 
     @GetMapping("/with-runs/{specId}")

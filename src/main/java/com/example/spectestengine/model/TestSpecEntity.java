@@ -30,7 +30,7 @@ public class TestSpecEntity {
     @Column(unique = true, nullable = false)
     private String name;
 
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "text")
     private String spec;
 
     @OneToMany(mappedBy = "spec", fetch = FetchType.LAZY)
