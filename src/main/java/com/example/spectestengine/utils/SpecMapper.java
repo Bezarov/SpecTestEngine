@@ -6,7 +6,7 @@ import com.example.spectestengine.model.TestSpecEntity;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 
-public class SpecMapper {
+public final class SpecMapper {
 
     private SpecMapper() {
         throw new IllegalStateException("Utility class");

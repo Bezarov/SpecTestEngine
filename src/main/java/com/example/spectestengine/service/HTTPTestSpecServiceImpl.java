@@ -49,7 +49,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
     public TestSpecDTO createSpec(String specName, String specJson) {
         testSpecRepository.findByName(specName)
                 .ifPresent(existing -> {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "Specification with name '" + specName + "' already exists");
                 });
 
@@ -59,10 +59,16 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        TestSpecEntity saved = testSpecRepository.save(entity);
+        return SpecMapper.mapToDTO(testSpecRepository.save(entity));
+    }
 
-
-        return SpecMapper.mapToDTO(saved);
+    @Override
+    public TestSpecDTO getSpecById(Long specId) {
+        return testSpecRepository.findById(specId)
+                .map(SpecMapper::mapToDTO)
+                .orElseThrow(() -> {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, SPEC_NOT_FOUND_LOG + "id: " + specId);
+                });
     }
 
     @Override

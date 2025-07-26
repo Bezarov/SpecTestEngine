@@ -34,7 +34,7 @@ public class TestRunController {
 
     @GetMapping("/by-id/{specId}")
     public ResponseEntity<TestRunResultDTO> runById(@PathVariable Long specId) {
-        log.debug("Received GET request to RUN test specification with id: {}", specId);
+        log.debug("Received GET request to RUN test specification with id: '{}'", specId);
         TestRunResultDTO resultDTO = httpTestSpecService.runTestBySpecId(specId);
         log.debug(RESPONSE_LOG, resultDTO);
         return ResponseEntity.ok(resultDTO);
@@ -42,7 +42,7 @@ public class TestRunController {
 
     @GetMapping("/by-name/{specName}")
     public ResponseEntity<TestRunResultDTO> runByName(@PathVariable String specName) {
-        log.debug("Received GET request to RUN test specification with name: {}", specName);
+        log.debug("Received GET request to RUN test specification with name: '{}'", specName);
         TestRunResultDTO resultDTO = httpTestSpecService.runTestWithSpecName(specName);
         log.debug(RESPONSE_LOG, resultDTO);
         return ResponseEntity.ok(resultDTO);
@@ -50,7 +50,7 @@ public class TestRunController {
 
     @GetMapping("/in-range")
     public ResponseEntity<List<TestRunResultDTO>> runInRange(@RequestParam Long fromId, @RequestParam Long toId) {
-        log.debug("Received GET request to RUN in range tests specification from id: {}, to id: {}", fromId, toId);
+        log.debug("Received GET request to RUN in range tests specification from id: '{}', to id: '{}'", fromId, toId);
         List<TestRunResultDTO> resultDTOS = httpTestSpecService.runTestsInSpecRangeId(fromId, toId);
         log.debug(RESPONSE_LOG, resultDTOS);
         return ResponseEntity.ok(resultDTOS);

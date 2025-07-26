@@ -1,29 +1,27 @@
 package com.example.spectestengine.handler;
 
+import static com.example.spectestengine.utils.Constants.*;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.response.Response;
 
 public class JsonPathCheckHandler implements TestCheckHandler {
-    private static final String EXCEPTED_JSON_BODY_PATH = "expectedBodyPath";
-    private static final String EXCEPTED_JSON_BODY_VALUE = "expectedBodyValue";
-    private static final String ACTUAL_JSON_BODY_PATH_VALUE = "actualBodyPathValue";
-    private static final String PASS = "----------------PASS-------------------";
-    private static final String FAIL = "----------------FAIL-------------------";
 
     @Override
-    public String handle(JsonNode specification, Response response, ObjectNode logNode, String handlerStatus) {
-        if (specification.has(EXCEPTED_JSON_BODY_PATH) && specification.has(EXCEPTED_JSON_BODY_VALUE)) {
-            String exceptedJsonPath = specification.get(EXCEPTED_JSON_BODY_PATH).asText();
-            String expectedJsonValue = specification.get(EXCEPTED_JSON_BODY_VALUE).asText();
-            String actualJsonValue = response.jsonPath().getString(exceptedJsonPath);
+    public String handle(JsonNode specification, Response response, ObjectNode resultLog, String handlerStatus) {
+        if (specification.has(EXCEPTED_BODY_JSON_PATH) && specification.has(EXCEPTED_BODY_JSON_VALUE)) {
 
-            logNode.put(EXCEPTED_JSON_BODY_PATH, exceptedJsonPath);
-            logNode.put(EXCEPTED_JSON_BODY_VALUE, expectedJsonValue);
-            logNode.put(ACTUAL_JSON_BODY_PATH_VALUE, actualJsonValue);
+            String exceptedJsonPath = specification.get(EXCEPTED_BODY_JSON_PATH).asText();
+            String expectedJsonValue = specification.get(EXCEPTED_BODY_JSON_VALUE).asText();
+            String receivedJsonPathValue = response.jsonPath().getString(exceptedJsonPath);
 
-            boolean isEqual = expectedJsonValue.equals(actualJsonValue);
-            logNode.put("jsonPathCheckResult", isEqual ? PASS : FAIL);
+            resultLog.put(EXCEPTED_BODY_JSON_PATH, exceptedJsonPath);
+            resultLog.put(EXCEPTED_BODY_JSON_VALUE, expectedJsonValue);
+            resultLog.put(RECEIVED_BODY_JSON_PATH_VALUE, receivedJsonPathValue);
+
+            boolean isEqual = expectedJsonValue.equals(receivedJsonPathValue);
+            resultLog.put(BODY_JSON_PATH_VALUE_CHECK_RESULT, isEqual ? PASS : FAIL);
             return isEqual ? handlerStatus : FAIL;
         }
         return handlerStatus;

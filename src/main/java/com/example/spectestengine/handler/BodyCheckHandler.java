@@ -1,103 +1,141 @@
 package com.example.spectestengine.handler;
 
+import static com.example.spectestengine.utils.Constants.*;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.response.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Iterator;
 
 @Slf4j
 public class BodyCheckHandler implements TestCheckHandler {
-    private static final String EXPECTED_BODY = "expectedBody";
-    private static final String ACTUAL_BODY = "actualBody";
-    private static final String EXCLUDED_FIELDS = "excludedFields";
-    private static final String EXCLUDE_ALL_OTHERS = "excludeAllOtherBodyFields";
-    private static final String PASS = "----------------PASS-------------------";
-    private static final String FAIL = "----------------FAIL-------------------";
-
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public String handle(JsonNode specification, Response response, ObjectNode logNode, String handlerStatus) {
+    public String handle(JsonNode specification, Response response, ObjectNode resultLog, String handlerStatus) {
         if (specification.has(EXPECTED_BODY)) {
             try {
                 JsonNode expectedBody = specification.get(EXPECTED_BODY).deepCopy();
-                JsonNode actualBody = objectMapper.readTree(response.getBody().asString());
+                JsonNode receivedBody = objectMapper.readTree(response.getBody().asString());
 
-                applyExclusions(specification, expectedBody, actualBody);
-                applyIncludeOnlyExpectedIfNeeded(specification, expectedBody, actualBody);
+                validateJsonBodies(expectedBody, receivedBody);
 
-                logNode.set(EXPECTED_BODY, expectedBody);
-                logNode.set(ACTUAL_BODY, actualBody);
+                applyExclusions(specification, expectedBody, receivedBody);
+                applyIncludeOnlyExpectedIfNeeded(specification, expectedBody, receivedBody);
 
-                boolean isMatch = matches(expectedBody, actualBody);
-                logNode.put("bodyCheckResult", isMatch ? PASS : FAIL);
+                resultLog.set(EXPECTED_BODY, expectedBody);
+                resultLog.set(COMPARED_BODY, receivedBody);
+
+                boolean isMatch = matches(expectedBody, receivedBody);
+                resultLog.put(BODY_CHECK_RESULT, isMatch ? PASS : FAIL);
+
+                resultLog.set(RECEIVED_BODY, objectMapper.readTree(response.getBody().asString()));
                 return isMatch ? handlerStatus : FAIL;
+
             } catch (Exception exception) {
-                log.warn("bodyCheckError: {}", exception.getMessage());
-                logNode.put("bodyCheckError", exception.getMessage());
+                log.warn("BodyCheckHandler error: '{}'", exception.getMessage());
+                resultLog.put(BODY_CHECK_ERROR, ERROR);
                 return FAIL;
             }
         }
         return handlerStatus;
     }
 
-    private void applyExclusions(JsonNode specification, JsonNode expectedBody, JsonNode actualBody) {
-        if (specification.has(EXCLUDED_FIELDS)) {
-            for (JsonNode field : specification.get(EXCLUDED_FIELDS)) {
-                if (expectedBody.isObject())
-                    ((ObjectNode) expectedBody).remove(field.asText());
-                if (actualBody.isObject())
-                    ((ObjectNode) actualBody).remove(field.asText());
-            }
+    private void validateJsonBodies(JsonNode expectedBody, JsonNode receivedBody) {
+        if (!expectedBody.isObject()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Expected body must be a JSON object: " + expectedBody.asText());
         }
-    }
 
-    private void applyIncludeOnlyExpectedIfNeeded(JsonNode specification, JsonNode expectedBody, JsonNode actualBody) {
-        if (specification.has(EXCLUDE_ALL_OTHERS) && specification.get(EXCLUDE_ALL_OTHERS).asBoolean()) {
-            if (actualBody.isArray() && expectedBody.isObject()) {
-                for (JsonNode element : actualBody) {
-                    ObjectNode trimmedJson = trimToExpectedFields(expectedBody, actualBody);
-                    ((ObjectNode) element).removeAll();
-                    ((ObjectNode) element).setAll(trimmedJson);
+        if (receivedBody.isObject()) {
+            return;
+        }
+
+        if (receivedBody.isArray()) {
+            for (JsonNode bodyJsonArrayElement : receivedBody) {
+                if (!bodyJsonArrayElement.isObject()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Each element in the Response body array must be a JSON object: " + receivedBody.asText());
                 }
-            } else if (actualBody.isObject() && expectedBody.isObject()) {
-                ObjectNode trimmedJson = trimToExpectedFields(expectedBody, actualBody);
-                ((ObjectNode) actualBody).removeAll();
-                ((ObjectNode) actualBody).setAll(trimmedJson);
+            }
+            return;
+        }
+
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Response body must be a JSON object or an array of JSON objects: " + receivedBody.asText());
+    }
+
+    private void applyExclusions(JsonNode specification, JsonNode expectedBody, JsonNode receivedBody) {
+        if (specification.has(EXCLUDED_BODY_FIELDS)) {
+            for (JsonNode exclusionField : specification.get(EXCLUDED_BODY_FIELDS)) {
+                String exclusionFieldName = exclusionField.asText();
+                ((ObjectNode) expectedBody).remove(exclusionFieldName);
+
+                if (receivedBody.isObject()) {
+                    ((ObjectNode) receivedBody).remove(exclusionFieldName);
+                } else {
+                    for (JsonNode receivedBodyArrayElement : receivedBody)
+                        ((ObjectNode) receivedBodyArrayElement).remove(exclusionFieldName);
+                }
             }
         }
     }
 
-    private ObjectNode trimToExpectedFields(JsonNode expectedBody, JsonNode target) {
-        ObjectNode result = objectMapper.createObjectNode();
-        if (!expectedBody.isObject() || !target.isObject())
-            return result;
-
-        expectedBody.fieldNames().forEachRemaining(field -> {
-            if (target.has(field)) {
-                JsonNode expectedChild = expectedBody.get(field);
-                JsonNode targetChild = target.get(field);
-
-                if (expectedChild.isObject() && targetChild.isObject())
-                    result.set(field, trimToExpectedFields(expectedChild, targetChild));
-                else
-                    result.set(field, targetChild);
+    private void applyIncludeOnlyExpectedIfNeeded(JsonNode specification, JsonNode expectedBody, JsonNode receivedBody) {
+        if (specification.has(EXCLUDE_ALL_OTHER_BODY_FIELDS) || specification.get(EXCLUDE_ALL_OTHER_BODY_FIELDS).asBoolean()) {
+            if (receivedBody.isObject()) {
+                ObjectNode trimmedBodyToCompare = trimToComparableFields(expectedBody, receivedBody);
+                ((ObjectNode) receivedBody).removeAll();
+                ((ObjectNode) receivedBody).setAll(trimmedBodyToCompare);
+                return;
             }
-        });
 
-        return result;
+            for (JsonNode bodyJsonArrayElement : receivedBody) {
+                ObjectNode trimmedArrayBodyElementToCompare = trimToComparableFields(expectedBody, bodyJsonArrayElement);
+                ((ObjectNode) bodyJsonArrayElement).removeAll();
+                ((ObjectNode) bodyJsonArrayElement).setAll(trimmedArrayBodyElementToCompare);
+            }
+        }
+    }
+
+    private ObjectNode trimToComparableFields(JsonNode expectedBody, JsonNode bodyToTrim) {
+        ObjectNode trimmedToExpectedBody = objectMapper.createObjectNode();
+
+        for (String expectedBodyField : getIterable(expectedBody.fieldNames())) {
+            if (bodyToTrim.has(expectedBodyField)) {
+                JsonNode expectedChild = expectedBody.get(expectedBodyField);
+                JsonNode receivedChild = bodyToTrim.get(expectedBodyField);
+
+                if (expectedChild.isObject() && receivedChild.isObject()) {
+                    trimmedToExpectedBody.set(expectedBodyField, trimToComparableFields(expectedChild, receivedChild));
+                } else {
+                    trimmedToExpectedBody.set(expectedBodyField, receivedChild);
+                }
+            }
+        }
+
+        return trimmedToExpectedBody;
     }
 
     private boolean matches(JsonNode expectedBody, JsonNode actualBody) {
-        if (actualBody.isArray() && expectedBody.isObject()) {
-            for (JsonNode element : actualBody) {
-                if (expectedBody.equals(element))
-                    return true;
-            }
-            return false;
-        } else {
+        if (actualBody.isObject()) {
             return expectedBody.equals(actualBody);
         }
+
+        for (JsonNode element : actualBody) {
+            if (expectedBody.equals(element)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Iterable<String> getIterable(final Iterator<String> iterator) {
+        return () -> iterator;
     }
 }
