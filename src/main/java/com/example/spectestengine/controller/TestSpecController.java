@@ -3,6 +3,7 @@ package com.example.spectestengine.controller;
 import com.example.spectestengine.dto.TestSpecDTO;
 import com.example.spectestengine.dto.TestSpecWithRunsDTO;
 import com.example.spectestengine.service.HTTPTestSpecService;
+import com.example.spectestengine.validation.JsonStringValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,8 +31,17 @@ public class TestSpecController {
 
     @PostMapping("/create")
     public ResponseEntity<TestSpecDTO> createSpec(@RequestParam String specName, @RequestBody String specJson) {
-        log.debug("Received POST request to create test specification: {} with name: {}", specJson, specName);
+        log.debug("Received POST request to create test with name: '{}' and specification: '{}'", specName, specJson);
+        JsonStringValidator.validate(specJson);
         TestSpecDTO testSpecDTO = httpTestSpecService.createSpec(specName, specJson);
+        log.debug(RESPONSE_LOG, testSpecDTO);
+        return ResponseEntity.ok(testSpecDTO);
+    }
+
+    @GetMapping("/by-id/{specId}")
+    public ResponseEntity<TestSpecDTO> getSpecById(@PathVariable Long specId) {
+        log.debug("Received GET request to get test specification with run results: '{}'", specId);
+        TestSpecDTO testSpecDTO = httpTestSpecService.getSpecById(specId);
         log.debug(RESPONSE_LOG, testSpecDTO);
         return ResponseEntity.ok(testSpecDTO);
     }
@@ -46,7 +56,7 @@ public class TestSpecController {
 
     @GetMapping("/with-runs/{specId}")
     public ResponseEntity<TestSpecWithRunsDTO> getSpecWithRunsById(@PathVariable Long specId) {
-        log.debug("Received GET request to get test specification with run results: {}", specId);
+        log.debug("Received GET request to get test specification with run results: '{}'", specId);
         TestSpecWithRunsDTO testSpecWithRunsDTO = httpTestSpecService.getSpecWithRuns(specId);
         log.debug(RESPONSE_LOG, testSpecWithRunsDTO);
         return ResponseEntity.ok(testSpecWithRunsDTO);
@@ -54,7 +64,7 @@ public class TestSpecController {
 
     @PutMapping("/by-id")
     public ResponseEntity<TestSpecDTO> updateSpecById(@RequestParam Long specId, @RequestBody String specJson) {
-        log.debug("Received PUT request to update test specification: {} with spec id: {}", specJson, specId);
+        log.debug("Received PUT request to update test specification: '{}' with spec id: '{}'", specJson, specId);
         TestSpecDTO testSpecEntity = httpTestSpecService.updateSpecById(specId, specJson);
         log.debug(RESPONSE_LOG, testSpecEntity);
         return ResponseEntity.ok(testSpecEntity);
@@ -62,7 +72,7 @@ public class TestSpecController {
 
     @PutMapping("/by-name")
     public ResponseEntity<TestSpecDTO> updateSpecByName(@RequestParam String specName, @RequestBody String specJson) {
-        log.debug("Received PUT request to update test specification: {} with spec name: {}", specJson, specName);
+        log.debug("Received PUT request to update test specification: '{}' with spec name: '{}'", specJson, specName);
         TestSpecDTO testSpecEntity = httpTestSpecService.updateSpecByName(specName, specJson);
         log.debug(RESPONSE_LOG, testSpecEntity);
         return ResponseEntity.ok(testSpecEntity);
@@ -70,7 +80,7 @@ public class TestSpecController {
 
     @DeleteMapping("/by-id")
     public ResponseEntity<TestSpecDTO> deleteSpecById(@RequestParam Long specId, @RequestBody String specJson) {
-        log.debug("Received DELETE request to remove test specification: {} with spec id: {}", specJson, specId);
+        log.debug("Received DELETE request to remove test specification: '{}' with spec id: '{}'", specJson, specId);
         TestSpecDTO testSpecDTO = httpTestSpecService.deleteSpecById(specId, specJson);
         log.debug(RESPONSE_LOG, testSpecDTO);
         return ResponseEntity.ok(testSpecDTO);
@@ -78,7 +88,7 @@ public class TestSpecController {
 
     @DeleteMapping("/by-name")
     public ResponseEntity<TestSpecDTO> deleteSpecByName(@RequestParam String specName, @RequestBody String specJson) {
-        log.debug("Received DELETE request to remove test specification: {} with spec name: {}", specJson, specName);
+        log.debug("Received DELETE request to remove test specification: '{}' with spec name: '{}'", specJson, specName);
         TestSpecDTO testSpecDTO = httpTestSpecService.deleteSpecByName(specName, specJson);
         log.debug(RESPONSE_LOG, testSpecDTO);
         return ResponseEntity.ok(testSpecDTO);

@@ -9,6 +9,8 @@ import java.util.List;
 public interface HTTPTestSpecService {
     TestSpecDTO createSpec(String specName, String specJson);
 
+    TestSpecDTO getSpecById(Long specId);
+
     List<TestSpecDTO> getAllTestSpec();
 
     List<TestRunResultDTO> runAllTestsSpec();
