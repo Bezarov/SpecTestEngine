@@ -6,14 +6,18 @@
 
 ## 🚀 Features
 
-- ✅ Declarative API testing via JSON specifications
-- ✅ Status code, media type, and body checks
+- ✅ Declarative API testing with JSON specs
+- ✅ Status code, media type, and body validation
 - ✅ Supports `excludedBodyFields` to ignore dynamic fields
-- ✅ Supports `excludeAllOtherBodyFields` to validate only specified parts of the body `expectedBody`
-- ✅ Supports `expectedBodyJsonPath & expectedBodyJsonValue` **JsonPath** checks to verify specific nested JSON values
+- ✅ Supports `excludeAllOtherBodyFields` to compare only specified fields
+- ✅ Supports **multiple JSONPath checks** (`expectedBodyJsonPaths`)
+- ✅ Flexible **headers** and **body** definition in the spec
+- ✅ Asynchronous **queue** system:
+    - Parallel execution for different URLs
+    - Sequential execution per single URL (FIFO)
 - ✅ Detailed run logs for every test execution
-- ✅ Each specification and its test results are saved to the database with full CRUD support
-- ✅ Built with **Spring Boot** and **RestAssured**
+- ✅ Full CRUD for saving specifications and results
+- ✅ Powered by **Spring Boot**, **RestAssured**, and **Java 21 Virtual Threads**
 
 ---
 
@@ -23,71 +27,94 @@
 |----------------------------|----------------------------------------------------------------------------------------------------------|
 | **url**                    | The API endpoint URL to test                                                                             |
 | **method**                 | HTTP method (`GET`, `POST`, `PUT`, `DELETE`, etc.)                                                       |
+| **headers**                | *(Optional)* Key-value map for HTTP headers                                                              |
+| **body**                   | *(Optional)* JSON body for `POST` or `PUT` requests                                                      |
 | **expectedStatusCode**     | Expected HTTP response status code                                                                       |
 | **expectedMediaType**      | *(Optional)* Expected `Content-Type` header                                                              |
 | **expectedBody**           | *(Optional)* JSON body to compare                                                                        |
-| **excludedBodyFields**     | *(Optional)* Array of JSON fields to ignore during the body comparison                                   |
-| **excludeAllOtherBodyFields** | *(Optional)* If `true`, trims the actual response body to include only the specified expected fields      |
-| **expectedBodyJsonPath**   | *(Optional)* JSONPath expression to locate a value in the response body                                  |
-| **expectedBodyJsonValue**  | *(Optional)* The expected value at the given JSONPath                                                    |
+| **excludedBodyFields**     | *(Optional)* Array of JSON fields to ignore during body comparison                                       |
+| **excludeAllOtherBodyFields** | *(Optional)* If `true`, trims the actual response body to only keep fields present in `expectedBody`     |
+| **expectedBodyJsonPaths**  | *(Optional)* Array of JSONPath checks: `{ "expectedJsonPath": "foo", "expectedJsonValue": "bar" }`     |
 
 ---
 
 ## ⚙️ How it works
 
-1. Parses the JSON test specification.
-2. Executes the HTTP request using RestAssured.
-3. Runs the following checks:
-   - ✅ **Status code** check:
-     - `expectedStatusCode`
-   - ✅ **Media type** check: (if provided)
-     - `expectedMediaType`
-   - ✅ **Body** check: (if provided `expectedBody`)
-     - Ignores `excludedBodyFields` if specified as Json Array.
-     - If `excludeAllOtherBodyFields` is `true`, trims the received body to include only the expected fields.
-     - If `expectedBodyJsonPath` and `expectedBodyJsonValue` are specified, performs a JSONPath check.
-4. Logs all intermediate steps and stores a detailed `run log` for every test.
-5. Saves the test run with a final `PASS` or `FAIL` status.
-6. All test specs and results are persisted in the database and support full CRUD operations via the REST API.
+1. Parses the JSON specification.
+2. Builds an HTTP request with **headers** and **body** if provided.
+3. Executes the request using **RestAssured**.
+4. Runs the following checks:
+    - ✅ **Status code**: matches `expectedStatusCode`
+    - ✅ **Media type**: matches `expectedMediaType` (if provided)
+    - ✅ **Body check**:
+        - Ignores `excludedBodyFields` if specified.
+        - If `excludeAllOtherBodyFields` is `true`, trims the actual body to only the fields in `expectedBody`.
+    - ✅ **Multiple JSONPath checks**: validates each `expectedBodyJsonPaths` item.
+5. Stores a detailed log with all intermediate steps.
+6. Saves the final result with `PASS` or `FAIL` status.
+7. All tests run through an **internal queue** to:
+    - Execute requests **in parallel** for different URLs.
+    - Execute requests **sequentially** for the same URL.
 
 ---
 
 ## 📌 `excludeAllOtherBodyFields`
 
-When `excludeAllOtherBodyFields` is `true`, the handler removes all fields in the actual response except those explicitly defined in `expectedBody`.
-This helps ignore irrelevant or dynamic data (like timestamps, auto-generated IDs, or unrelated nested objects).
+When `excludeAllOtherBodyFields` is `true`, the handler removes all fields in the actual response body except those defined in `expectedBody`.  
+This is useful for ignoring dynamic or irrelevant data.
 
-✅ If the trimmed received body exactly matches the `expectedBody`, the check passes.
+✅ If the `trimmed received body` exactly matches the `expectedBody`, the check passes.
 
 ---
 
 ## 📌 `JsonPath` Check
 
-When both `expectedBodyPath` and `expectedBodyValue` are provided:
-
-- The runner extracts the value from the actual response using the JSONPath expression.
-- If the extracted value matches `expectedBodyValue`, the check passes.
-
-This is useful for verifying deeply nested properties or array elements without needing to compare the whole response body.
-
----
+- The `expectedBodyJsonPaths` field accepts an **array of JSONPath checks**:
+  ```json
+  "expectedBodyJsonPaths": [
+    { "expectedJsonPath": "data.id", "expectedJsonValue": "123" },
+    { "expectedJsonPath": "data.name", "expectedJsonValue": "Alex" }
+  ]
 ---
 ## ✅ Example of success test specification
 ```json
 {
-  "url": "http://localhost:8080/test/spec",
-  "method": "GET",
+  "url": "http://localhost:8080/test/spec/create?specName=POST TEST",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer abc123",
+    "X-Custom-Header": "test"
+  },
+  "body": {
+    "name": "Alex",
+    "email": "alexandr.bezarov@gmail.com"
+  },
   "expectedStatusCode": 200,
   "expectedMediaType": "application/json",
   "expectedBody": {
-    "name": "success test example",
+    "id": 1,
+    "name": "POST TEST",
     "spec": {
-      "url": "http://localhost:8080/test/spec",
-      "method": "GET",
-      "expectedStatusCode": 200
-    }
+      "name": "Alex",
+      "email": "alexandr.bezarov@gmail.com"
+    },
+    "createdAt": "2025-07-27T14:28:18"
   },
-  "excludeAllOtherBodyFields": true
+  "excludedBodyFields": [
+    "id",
+    "createdAt"
+  ],
+  "excludeAllOtherBodyFields": false,
+  "expectedBodyJsonPaths": [
+    {
+      "expectedJsonPath": "spec.name",
+      "expectedJsonValue": "Alex"
+    },
+    {
+      "expectedJsonPath": "spec.email",
+      "expectedJsonValue": "alexandr.bezarov@gmail.com"
+    }
+  ]
 }
 ```
 
@@ -97,60 +124,57 @@ This is useful for verifying deeply nested properties or array elements without 
 {
   "runId": 1,
   "specId": 1,
-  "overalTestStatus": "----------------PASS-------------------",
+  "overallTestStatus": "----------------PASS-------------------",
   "log": {
-    "url": "http://localhost:8080/test/spec",
-    "method": "GET",
+    "url": "http://localhost:8080/test/spec/create?specName=POST TEST",
+    "method": "POST",
     "expectedStatusCode": 200,
     "receivedStatusCode": 200,
     "statusCodeCheckResult": "----------------PASS-------------------",
     "expectedMediaType": "application/json",
     "receivedMediaType": "application/json",
     "mediaTypeCheckResult": "----------------PASS-------------------",
-    "expectedBody": {
-      "name": "success test example",
-      "spec": {
-        "url": "http://localhost:8080/test/spec",
-        "method": "GET",
-        "expectedStatusCode": 200
-      }
-    },
-    "comparedBody": [
+    "expectedJsonPathCheck": [
       {
-        "name": "success test example",
-        "spec": {
-          "url": "http://localhost:8080/test/spec",
-          "method": "GET",
-          "expectedStatusCode": 200
-        }
+        "expectedJsonPath": "spec.name",
+        "expectedJsonValue": "Alex",
+        "receivedJsonValue": "Alex",
+        "bodyJsonPathValueCheckResult": "----------------PASS-------------------"
+      },
+      {
+        "expectedJsonPath": "spec.email",
+        "expectedJsonValue": "alexandr.bezarov@gmail.com",
+        "receivedJsonValue": "alexandr.bezarov@gmail.com",
+        "bodyJsonPathValueCheckResult": "----------------PASS-------------------"
       }
     ],
-    "bodyCheckResult": "----------------PASS-------------------",
-    "receivedBody": [
-      {
-        "id": 1,
-        "name": "success test example",
-        "spec": {
-          "url": "http://localhost:8080/test/spec",
-          "method": "GET",
-          "expectedStatusCode": 200,
-          "expectedMediaType": "application/json",
-          "expectedBody": {
-            "name": "success test example",
-            "spec": {
-              "url": "http://localhost:8080/test/spec",
-              "method": "GET",
-              "expectedStatusCode": 200
-            }
-          },
-          "excludeAllOtherBodyFields": true
-        },
-        "createdAt": "2025-07-26T21:27:50"
+    "expectedBody": {
+      "name": "POST TEST",
+      "spec": {
+        "name": "Alex",
+        "email": "alexandr.bezarov@gmail.com"
       }
-    ]
+    },
+    "comparedBody": {
+      "name": "POST TEST",
+      "spec": {
+        "name": "Alex",
+        "email": "alexandr.bezarov@gmail.com"
+      }
+    },
+    "bodyCheckResult": "----------------PASS-------------------",
+    "receivedBody": {
+      "id": 2,
+      "name": "POST TEST",
+      "spec": {
+        "name": "Alex",
+        "email": "alexandr.bezarov@gmail.com"
+      },
+      "createdAt": "2025-07-27T14:38:40"
+    }
   },
-  "startedAt": "2025-07-26T21:28:10",
-  "finishedAt": "2025-07-26T21:28:11"
+  "startedAt": "2025-07-27T14:38:40",
+  "finishedAt": "2025-07-27T14:38:41"
 }
 ```
 
@@ -158,19 +182,41 @@ This is useful for verifying deeply nested properties or array elements without 
 ## ❌ Example of fail test specification
 ```json
 {
-  "url": "http://localhost:8080/test/spec",
-  "method": "GET",
-  "expectedStatusCode": 404,
+  "url": "http://localhost:8080/test/spec/create?specName=POST TEST",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer abc123",
+    "X-Custom-Header": "test"
+  },
+  "body": {
+    "name": "Alex",
+    "email": "alexandr.bezarov@gmail.com"
+  },
+  "expectedStatusCode": 400,
   "expectedMediaType": "application/text",
   "expectedBody": {
-    "name": "fail test example",
+    "id": 1,
+    "name": "POST TEST",
     "spec": {
-      "url": "http://localhost:8080/test/spec",
-      "method": "GET",
-      "expectedStatusCode": 200
-    }
+      "name": "Alex",
+      "email": "alexandr.bezarov@gmail.com"
+    },
+    "createdAt": "2025-07-27T14:28:18"
   },
-  "excludeAllOtherBodyFields": true
+  "excludedBodyFields": [
+    "createdAt"
+  ],
+  "excludeAllOtherBodyFields": false,
+  "expectedBodyJsonPaths": [
+    {
+      "expectedJsonPath": "spec.name",
+      "expectedJsonValue": "Alex1"
+    },
+    {
+      "expectedJsonPath": "spec.email",
+      "expectedJsonValue": "alexandr.bezarov@gmail.com"
+    }
+  ]
 }
 ```
 
@@ -180,72 +226,77 @@ This is useful for verifying deeply nested properties or array elements without 
 {
   "runId": 1,
   "specId": 1,
-  "overalTestStatus": "----------------FAIL-------------------",
+  "overallTestStatus": "----------------FAIL-------------------",
   "log": {
-    "url": "http://localhost:8080/test/spec",
-    "method": "GET",
-    "expectedStatusCode": 404,
+    "url": "http://localhost:8080/test/spec/create?specName=POST TEST",
+    "method": "POST",
+    "expectedStatusCode": 400,
     "receivedStatusCode": 200,
     "statusCodeCheckResult": "----------------FAIL-------------------",
     "expectedMediaType": "application/text",
     "receivedMediaType": "application/json",
     "mediaTypeCheckResult": "----------------FAIL-------------------",
-    "expectedBody": {
-      "name": "fail test example",
-      "spec": {
-        "url": "http://localhost:8080/test/spec",
-        "method": "GET",
-        "expectedStatusCode": 200
-      }
-    },
-    "comparedBody": [
+    "expectedJsonPathCheck": [
       {
-        "name": "success test example",
-        "spec": {
-          "url": "http://localhost:8080/test/spec",
-          "method": "GET",
-          "expectedStatusCode": 404
-        }
+        "expectedJsonPath": "spec.name",
+        "expectedJsonValue": "Alex1",
+        "receivedJsonValue": "Alex",
+        "bodyJsonPathValueCheckResult": "----------------FAIL-------------------"
+      },
+      {
+        "expectedJsonPath": "spec.email",
+        "expectedJsonValue": "alexandr.bezarov@gmail.com",
+        "receivedJsonValue": "alexandr.bezarov@gmail.com",
+        "bodyJsonPathValueCheckResult": "----------------PASS-------------------"
       }
     ],
-    "bodyCheckResult": "----------------FAIL-------------------",
-    "receivedBody": [
-      {
-        "id": 1,
-        "name": "success test example",
-        "spec": {
-          "url": "http://localhost:8080/test/spec",
-          "method": "GET",
-          "expectedStatusCode": 404,
-          "expectedMediaType": "application/text",
-          "expectedBody": {
-            "name": "fail test example",
-            "spec": {
-              "url": "http://localhost:8080/test/spec",
-              "method": "GET",
-              "expectedStatusCode": 200
-            }
-          },
-          "excludeAllOtherBodyFields": true
-        },
-        "createdAt": "2025-07-26T21:29:45"
+    "expectedBody": {
+      "id": 1,
+      "name": "POST TEST",
+      "spec": {
+        "name": "Alex",
+        "email": "alexandr.bezarov@gmail.com"
       }
-    ]
+    },
+    "comparedBody": {
+      "id": 2,
+      "name": "POST TEST",
+      "spec": {
+        "name": "Alex",
+        "email": "alexandr.bezarov@gmail.com"
+      }
+    },
+    "bodyCheckResult": "----------------FAIL-------------------",
+    "receivedBody": {
+      "id": 2,
+      "name": "POST TEST",
+      "spec": {
+        "name": "Alex",
+        "email": "alexandr.bezarov@gmail.com"
+      },
+      "createdAt": "2025-07-27T14:50:22"
+    }
   },
-  "startedAt": "2025-07-26T21:29:47",
-  "finishedAt": "2025-07-26T21:29:48"
+  "startedAt": "2025-07-27T14:50:21",
+  "finishedAt": "2025-07-27T14:50:23"
 }
 ```
 ---
+
+## ⚡ Execution Queue
+- All incoming test runs are added to a queue based on the request URL.
+- Tasks for the same URL run one by one in the order they arrive.
+- Tasks for different URLs run in parallel using Virtual Threads.
+
+---
 ## 🎯 TODO List for Future Improvements
 
-- 📌 Add an internal queue for tests that should be executed with the status
-- 📌 Add swagger documentation for active examples.
-- 📌 Add more handlers.
-- 📌 Add Security.
+- 🔒 Add authentication and role-based access control
+- 📚 Provide Swagger/OpenAPI documentation with live examples
+- 🖥️ Build a simple UI dashboard to monitor queues and results
+- 🧩 Add more matchers and check handlers (XML, schema validation, etc.)
 
 ---
 ## 🧑‍💻 Contributing
-Feel free to fork, extend and open PRs!
-
-Ideas: more matchers, authentication flows, test suites, CI/CD integration, UI dashboards.
+- Feel free to fork, extend and open PRs!
+- Ideas: more matchers, authentication flows, CI/CD integration, dashboards, cloud-native execution.
