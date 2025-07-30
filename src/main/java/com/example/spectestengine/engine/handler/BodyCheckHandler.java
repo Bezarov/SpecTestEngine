@@ -49,7 +49,7 @@ public class BodyCheckHandler implements TestCheckHandler {
     private void validateJsonBodies(JsonNode expectedBody, JsonNode receivedBody) {
         if (!expectedBody.isObject()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Expected body must be a JSON object: " + expectedBody.asText());
+                    "Expected body must be a JSON object: '%s'".formatted(expectedBody.asText()));
         }
 
         if (receivedBody.isObject()) {
@@ -60,14 +60,14 @@ public class BodyCheckHandler implements TestCheckHandler {
             for (JsonNode bodyJsonArrayElement : receivedBody) {
                 if (!bodyJsonArrayElement.isObject()) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Each element in the Response body array must be a JSON object: " + receivedBody.asText());
+                            "Each element in the Response body array must be a JSON object: '%s'".formatted(receivedBody.asText()));
                 }
             }
             return;
         }
 
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Response body must be a JSON object or an array of JSON objects: " + receivedBody.asText());
+                "Response body must be a JSON object or an array of JSON objects: '%s'".formatted(receivedBody.asText()));
     }
 
     private void applyExclusions(JsonNode specification, JsonNode expectedBody, JsonNode receivedBody) {

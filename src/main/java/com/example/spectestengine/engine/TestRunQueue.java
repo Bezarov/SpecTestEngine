@@ -1,6 +1,9 @@
 package com.example.spectestengine.engine;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -10,22 +13,28 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
+@Slf4j
 @Component
 public class TestRunQueue {
+    private static final int MAX_QUEUE_SIZE = 1000;
 
-    //Each url has its own queue
-    private final Map<String, BlockingQueue<Runnable>> queues = new ConcurrentHashMap<>();
-
-    //Each url queue has its own Virtual thread worker
+    private final Map<String, BlockingQueue<Runnable>> asynchronousQueue = new ConcurrentHashMap<>();
     private final Map<String, Future<?>> dispatchers = new ConcurrentHashMap<>();
-
-    //Virtual Threads for Dispatchers
     private final ExecutorService dispatcherExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
     public void submit(String url, Runnable task) {
-        BlockingQueue<Runnable> queue = queues.computeIfAbsent(url, k -> new LinkedBlockingQueue<>());
-        queue.add(task);
-        dispatchers.computeIfAbsent(url, k -> dispatcherExecutor.submit(() -> runDispatcher(queue)));
+        BlockingQueue<Runnable> synchronizedQueue = asynchronousQueue.computeIfAbsent(url, urlAsKey ->
+                new LinkedBlockingQueue<>(MAX_QUEUE_SIZE));
+
+        if (synchronizedQueue.offer(task)) {
+            synchronizedQueue.add(task);
+            dispatchers.computeIfAbsent(url, urlAsKey -> dispatcherExecutor.submit(() ->
+                    runDispatcher(synchronizedQueue)));
+        } else {
+            log.warn("Queue is full for URL: '{}' , queue size is '{}'", url, synchronizedQueue.size());
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Queue is full for URL: '%s' try again later".formatted(url));
+        }
     }
 
     private void runDispatcher(BlockingQueue<Runnable> queue) {

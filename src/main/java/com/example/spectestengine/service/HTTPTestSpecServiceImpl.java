@@ -12,16 +12,21 @@ import com.example.spectestengine.repository.TestSpecRepository;
 import com.example.spectestengine.utils.JsonMapper;
 import com.example.spectestengine.utils.SpecMapper;
 import com.example.spectestengine.utils.TestRunMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
+@Transactional
 public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
-    private static final String SPEC_NOT_FOUND_LOG = "Specification not found with ";
+    private static final String SPEC_NOT_FOUND_LOG_MSG = "Specification not found with '%s': '%s'";
+
     private final TestSpecRepository testSpecRepository;
     private final TestRunRepository testRunRepository;
     private final TestRunEngine testRunEngine;
@@ -34,31 +39,54 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
 
     @Override
     public TestSpecDTO createSpec(String specName, String specJson) {
+        log.info("Creating new test specification: '{}' with name: '{}'", specJson, specName);
         testSpecRepository.findByName(specName)
                 .ifPresent(existing -> {
+                    log.warn("Specification with name: '{}', already exists", specName);
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Specification with name '" + specName + "' already exists");
+                            "Specification with name '%s' already exists".formatted(specName));
                 });
 
-        TestSpecEntity entity = TestSpecEntity.builder()
+        TestSpecEntity savedEntity = testSpecRepository.save(TestSpecEntity.builder()
                 .name(specName)
                 .spec(specJson)
                 .createdAt(LocalDateTime.now())
-                .build();
+                .build());
+        log.info("Successfully created specification: '{}' with ID: '{}'", specName, savedEntity.getId());
 
-        return SpecMapper.mapToDTO(testSpecRepository.save(entity));
+        return SpecMapper.mapToDTO(savedEntity);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public TestSpecDTO getSpecById(Long specId) {
+        log.debug("Searching specification by ID: '{}'", specId);
         return testSpecRepository.findById(specId)
                 .map(SpecMapper::mapToDTO)
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.BAD_REQUEST, SPEC_NOT_FOUND_LOG + "id: " + specId));
+                .orElseThrow(() -> {
+                    log.warn("Specification not found with ID: '{}'", specId);
+                    return new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("id:", specId));
+                });
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public TestSpecDTO getSpecByName(String specName) {
+        log.debug("Searching specification by name: '{}'", specName);
+        return testSpecRepository.findByName(specName)
+                .map(SpecMapper::mapToDTO)
+                .orElseThrow(() -> {
+                    log.warn("Specification not found with name: '{}'", specName);
+                    return new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("name:", specName));
+                });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<TestSpecDTO> getAllTestSpec() {
+        log.debug("Searching all specifications");
         return testSpecRepository.findAll().stream()
                 .map(SpecMapper::mapToDTO)
                 .toList();
@@ -66,6 +94,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
 
     @Override
     public List<TestRunResultDTO> runAllTestsSpec() {
+        log.info("Running all test specifications");
         return testSpecRepository.findAll().stream()
                 .map(testSpecEntity -> {
                     TestRunEntity runEntity = testRunEngine.buildTestRun(testSpecEntity);
@@ -77,41 +106,55 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
 
     @Override
     public TestRunResultDTO runTestBySpecId(Long specId) {
+        log.info("Running test for specification ID: '{}'", specId);
         return testSpecRepository.findById(specId)
                 .map(testSpecEntity -> {
                     TestRunEntity runEntity = testRunEngine.buildTestRun(testSpecEntity);
                     testRunRepository.save(runEntity);
+                    log.info("Successfully run test id: '{}', for specification ID: '{}'", runEntity.getId(), specId);
                     return TestRunMapper.mapToDTO(runEntity);
                 })
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "id: " + specId));
+                .orElseThrow(() -> {
+                    log.warn("Run test failed - specification with ID: '{}' not found", specId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("id:", specId));
+                });
     }
 
     @Override
     public TestRunResultDTO runTestWithSpecName(String specName) {
+        log.info("Running test for specification name: '{}'", specName);
         return testSpecRepository.findByName(specName)
                 .map(testSpecEntity -> {
                     TestRunEntity runEntity = testRunEngine.buildTestRun(testSpecEntity);
                     testRunRepository.save(runEntity);
+                    log.info("Successfully run test id: '{}', for specification name: '{}'", runEntity.getId(), specName);
                     return TestRunMapper.mapToDTO(runEntity);
                 })
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "name: " + specName));
+                .orElseThrow(() -> {
+                    log.warn("Run test failed - specification with name: '{}' not found", specName);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("name:", specName));
+                });
     }
 
     @Override
     public List<TestRunResultDTO> runTestsInSpecRangeId(Long fromId, Long toId) {
+        log.info("Running tests for id specification range: '{}' to '{}'", fromId, toId);
         return testSpecRepository.findAllByIdBetween(fromId, toId).stream()
                 .map(testSpecEntity -> {
                     TestRunEntity runEntity = testRunEngine.buildTestRun(testSpecEntity);
                     testRunRepository.save(runEntity);
+                    log.info("Successfully run test id: '{}', in range specification : '{}' to '{}'", runEntity.getId(), fromId, toId);
                     return TestRunMapper.mapToDTO(runEntity);
                 })
                 .toList();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public TestSpecWithRunsDTO getSpecWithRuns(Long specId) {
+        log.debug("Searching specification with runs for specification ID: '{}'", specId);
         return testSpecRepository.findByIdWithRuns(specId)
                 .map(spec -> new TestSpecWithRunsDTO(
                         spec.getId(),
@@ -128,51 +171,76 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                                 ))
                                 .toList()
                 ))
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "id: " + specId));
+                .orElseThrow(() -> {
+                    log.warn("Specification with runs not found for ID: '{}'", specId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("id:", specId));
+                });
     }
 
     @Override
     public TestSpecDTO updateSpecById(Long specId, String specJson) {
+        log.info("Updating specification with ID: '{}'", specId);
         return testSpecRepository.findById(specId)
-                .map(spec -> {
-                    spec.setSpec(specJson);
-                    return SpecMapper.mapToDTO(testSpecRepository.save(spec));
+                .map(specEntity -> {
+                    specEntity.setSpec(specJson);
+                    TestSpecEntity savedSpec = testSpecRepository.save(specEntity);
+                    log.debug("Specification updated from: '{}' to: '{}'", specEntity, savedSpec);
+                    return SpecMapper.mapToDTO(savedSpec);
                 })
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "id: " + specId));
+                .orElseThrow(() -> {
+                    log.warn("Update specification failed - specification with id: '{}' not found", specId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("id:", specId));
+                });
     }
 
     @Override
     public TestSpecDTO updateSpecByName(String specName, String specJson) {
+        log.info("Updating specification with name: '{}'", specName);
         return testSpecRepository.findByName(specName)
-                .map(spec -> {
-                    spec.setSpec(specJson);
-                    return SpecMapper.mapToDTO(testSpecRepository.save(spec));
+                .map(specEntity -> {
+                    specEntity.setSpec(specJson);
+                    TestSpecEntity savedSpec = testSpecRepository.save(specEntity);
+                    log.debug("Specification updated from: '{}' to: '{}'", specEntity, savedSpec);
+                    return SpecMapper.mapToDTO(savedSpec);
                 })
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "name: " + specName));
+                .orElseThrow(() -> {
+                    log.warn("Update specification failed - specification with name: '{}' not found", specName);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("name:", specName));
+                });
     }
 
     @Override
-    public TestSpecDTO deleteSpecById(Long specId, String specJson) {
+    public TestSpecDTO deleteSpecById(Long specId) {
+        log.info("Deleting specification with id: '{}'", specId);
         return testSpecRepository.findById(specId)
-                .map(spec -> {
-                    testSpecRepository.delete(spec);
-                    return SpecMapper.mapToDTO(spec);
+                .map(specEntity -> {
+                    testSpecRepository.delete(specEntity);
+                    log.debug("Successfully deleted specification with id: '{}'", specId);
+                    return SpecMapper.mapToDTO(specEntity);
                 })
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "id: " + specId));
+                .orElseThrow(() -> {
+                    log.warn("Delete specification failed - specification with id: '{}' not found", specId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("id:", specId));
+                });
     }
 
     @Override
-    public TestSpecDTO deleteSpecByName(String specName, String specJson) {
+    public TestSpecDTO deleteSpecByName(String specName) {
+        log.info("Deleting specification with name: '{}'", specName);
         return testSpecRepository.findByName(specName)
-                .map(spec -> {
-                    testSpecRepository.delete(spec);
-                    return SpecMapper.mapToDTO(spec);
+                .map(specEntity -> {
+                    testSpecRepository.delete(specEntity);
+                    log.debug("Successfully deleted specification with name: '{}'", specName);
+                    return SpecMapper.mapToDTO(specEntity);
                 })
-                .orElseThrow(() ->
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, SPEC_NOT_FOUND_LOG + "name: " + specName));
+                .orElseThrow(() -> {
+                    log.warn("Delete specification failed - specification with name: '{}' not found", specName);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            SPEC_NOT_FOUND_LOG_MSG.formatted("name:", specName));
+                });
     }
 }

@@ -18,7 +18,7 @@ public class RestExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponseDTO> handleResponseStatusException(ResponseStatusException exception, HttpServletRequest request) {
-        log.info("Response Exception was intercepted and received, Status code: {}, Reason: {} ",
+        log.info("Response Exception was intercepted and relayed, Status code: '{}', message : '{}'",
                 exception.getStatusCode(), exception.getReason());
 
         ErrorResponseDTO errorResponse = new ErrorResponseDTO(
@@ -31,10 +31,24 @@ public class RestExceptionHandler {
         return ResponseEntity.status(exception.getStatusCode()).body(errorResponse);
     }
 
+    @ExceptionHandler(InvalidSpecException.class)
+    public ResponseEntity<ErrorResponseDTO> handleInvalidSpecException(InvalidSpecException invalidSpecException, HttpServletRequest request) {
+        log.info("InvalidSpecException was intercepted and relayed, message: '{}'", invalidSpecException.getMessage());
+
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS),
+                HttpStatus.BAD_REQUEST.toString(),
+                invalidSpecException.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
     @ExceptionHandler(Throwable.class)
     public ResponseEntity<String> handleGenericError(Throwable throwable) {
         StackTraceElement traceElement = throwable.getStackTrace()[0];
-        log.error("Generic error in class: {}, method: {}, line: {}, the error: {}",
+        log.error("Generic error in class: '{}', method: '{}', line: '{}', the error: '{}'",
                 traceElement.getClassName(), traceElement.getMethodName(),
                 traceElement.getLineNumber(), throwable.getMessage(), throwable);
 

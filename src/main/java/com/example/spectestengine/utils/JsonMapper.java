@@ -21,7 +21,7 @@ public final class JsonMapper {
             return mapper.writeValueAsString(obj);
         } catch (JsonProcessingException exception) {
             String errorMessage = String.format(
-                    "Failed to serialize to JSON at line %d, column %d ",
+                    "Failed to serialize to JSON at line '%d', column '%d'",
                     exception.getLocation().getLineNr(),
                     exception.getLocation().getColumnNr()
             );
@@ -36,7 +36,7 @@ public final class JsonMapper {
             return mapper.readTree(json);
         } catch (JsonProcessingException exception) {
             String errorMessage = String.format(
-                    "Failed to serialize from JSON at line %d, column %d ",
+                    "Failed to serialize from JSON at line '%d', column '%d'",
                     exception.getLocation().getLineNr(),
                     exception.getLocation().getColumnNr()
             );

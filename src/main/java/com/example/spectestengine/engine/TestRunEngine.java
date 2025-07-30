@@ -9,12 +9,14 @@ import com.example.spectestengine.engine.handler.StatusCodeCheckHandler;
 import com.example.spectestengine.engine.handler.TestCheckHandler;
 import com.example.spectestengine.model.TestRunEntity;
 import com.example.spectestengine.model.TestSpecEntity;
+import com.example.spectestengine.validation.SpecValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,6 +28,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+@Slf4j
 @Component
 public class TestRunEngine {
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -41,38 +44,38 @@ public class TestRunEngine {
     );
 
     public TestRunEntity buildTestRun(TestSpecEntity specEntity) {
+        log.info("Building test run");
+        var validatedSpec = SpecValidator.validate(specEntity.getSpec());
         CompletableFuture<TestRunEntity> future = new CompletableFuture<>();
 
-        testRunQueue.submit(getQueueKey(specEntity), () -> {
-            TestRunEntity testRunEntity = executeRun(specEntity);
+        testRunQueue.submit(validatedSpec.url(), () -> {
+            TestRunEntity testRunEntity = executeRun(specEntity, validatedSpec.jsonSpecNode(), validatedSpec.url(), validatedSpec.method());
             future.complete(testRunEntity);
         });
 
-        return waitForResult(future);
+        return waitForResult(future, specEntity.getId());
     }
 
-    private TestRunEntity executeRun(TestSpecEntity specEntity) {
+    private TestRunEntity executeRun(TestSpecEntity specEntity, JsonNode jsonSpecNode, String url, String method) {
         LocalDateTime startedAt = LocalDateTime.now();
         String overallTestStatus = PASS;
         ObjectNode resultLog = objectMapper.createObjectNode();
 
         try {
-            JsonNode specification = objectMapper.readTree(specEntity.getSpec());
-            String url = specification.get(URL).asText();
-            String method = specification.get(METHOD).asText().toUpperCase();
-
             resultLog.put(URL, url);
             resultLog.put(METHOD, method);
 
-            Response response = buildRequestSpecification(specification, url, method);
+            Response response = buildRequestSpecification(jsonSpecNode, url, method);
 
             for (TestCheckHandler handler : checkHandlers) {
-                overallTestStatus = handler.handle(specification, response, resultLog, overallTestStatus);
+                overallTestStatus = handler.handle(jsonSpecNode, response, resultLog, overallTestStatus);
             }
 
         } catch (Exception exception) {
+            log.warn("Exception occurred while executing test run", exception);
             overallTestStatus = ERROR;
-            resultLog.put("error", REST_RUN_ERROR);
+            resultLog.put("resultError", REST_RUN_ERROR);
+            resultLog.put("error-message", exception.getCause().getMessage());
         }
 
         LocalDateTime finishedAt = LocalDateTime.now();
@@ -86,23 +89,17 @@ public class TestRunEngine {
                 .build();
     }
 
-    private TestRunEntity waitForResult(CompletableFuture<TestRunEntity> future) {
+    private TestRunEntity waitForResult(CompletableFuture<TestRunEntity> future, Long specId) {
         try {
             return future.get(5, TimeUnit.SECONDS);
         } catch (TimeoutException timeoutException) {
-            throw new ResponseStatusException(HttpStatus.ACCEPTED, "Test in a queue. Please check results later.");
+            log.info("Timed out waiting for result, test still in a Queue");
+            throw new ResponseStatusException(HttpStatus.ACCEPTED, (
+                    "Your test task in a queue with spec id: '%s', please check test result later").formatted(specId));
         } catch (ExecutionException | InterruptedException exception) {
+            log.warn("Exception while waiting for test result thread is interrupted exception: '{}'", exception.getMessage());
             Thread.currentThread().interrupt();
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Test run failed");
-        }
-    }
-
-    private String getQueueKey(TestSpecEntity specEntity) {
-        try {
-            JsonNode specification = objectMapper.readTree(specEntity.getSpec());
-            return specification.get(URL).asText();
-        } catch (Exception exception) {
-            return "default";
         }
     }
 
