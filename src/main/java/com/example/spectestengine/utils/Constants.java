@@ -1,9 +1,14 @@
 package com.example.spectestengine.utils;
 
+import java.util.Set;
+
 public final class Constants {
     private Constants() {
         throw new IllegalStateException("Utility class");
     }
+
+    public static final Set<String> VALID_HTTP_METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");
+    public static final Set<String> MANDATORY_FIELDS = Set.of("url", "method");
 
     public static final String URL = "url";
     public static final String METHOD = "method";

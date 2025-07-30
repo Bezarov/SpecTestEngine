@@ -11,6 +11,8 @@ public interface HTTPTestSpecService {
 
     TestSpecDTO getSpecById(Long specId);
 
+    TestSpecDTO getSpecByName(String specName);
+
     List<TestSpecDTO> getAllTestSpec();
 
     List<TestRunResultDTO> runAllTestsSpec();
@@ -27,7 +29,7 @@ public interface HTTPTestSpecService {
 
     TestSpecDTO updateSpecByName(String specName, String specJson);
 
-    TestSpecDTO deleteSpecById(Long specId, String specJson);
+    TestSpecDTO deleteSpecById(Long specId);
 
-    TestSpecDTO deleteSpecByName(String specName, String specJson);
+    TestSpecDTO deleteSpecByName(String specName);
 }
