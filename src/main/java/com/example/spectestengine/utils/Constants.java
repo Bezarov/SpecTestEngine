@@ -10,6 +10,8 @@ public final class Constants {
     public static final Set<String> VALID_HTTP_METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");
     public static final Set<String> MANDATORY_FIELDS = Set.of("url", "method");
 
+    public static final int MAX_QUEUE_SIZE = 1000;
+
     public static final String URL = "url";
     public static final String METHOD = "method";
     public static final String BODY = "body";
@@ -38,7 +40,7 @@ public final class Constants {
     public static final String BODY_CHECK_RESULT = "bodyCheckResult";
     public static final String BODY_CHECK_ERROR = "bodyCheckError";
 
-    public static final String REST_RUN_ERROR = "------------TEST RUN ERROR-------------";
+    public static final String TEST_RUN_ERROR = "------------TEST RUN ERROR-------------";
     public static final String PASS = "----------------PASS-------------------";
     public static final String FAIL = "----------------FAIL-------------------";
     public static final String ERROR = "---------------ERROR-------------------";

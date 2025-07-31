@@ -39,7 +39,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
 
     @Override
     public TestSpecDTO createSpec(String specName, String specJson) {
-        log.info("Creating new test specification: '{}' with name: '{}'", specJson, specName);
+        log.info("Creating new test specification with name: '{}'", specName);
         testSpecRepository.findByName(specName)
                 .ifPresent(existing -> {
                     log.warn("Specification with name: '{}', already exists", specName);
@@ -52,7 +52,7 @@ public class HTTPTestSpecServiceImpl implements HTTPTestSpecService {
                 .spec(specJson)
                 .createdAt(LocalDateTime.now())
                 .build());
-        log.info("Successfully created specification: '{}' with ID: '{}'", specName, savedEntity.getId());
+        log.info("Successfully created specification with name: '{}' and ID: '{}'", specName, savedEntity.getId());
 
         return SpecMapper.mapToDTO(savedEntity);
     }

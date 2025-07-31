@@ -86,6 +86,8 @@ This is useful for ignoring dynamic or irrelevant data.
     "X-Custom-Header": "test"
   },
   "body": {
+    "url": "http://localhost:8080/test/spec/create?specName=POST-TEST",
+    "method": "POST",
     "name": "Alex",
     "email": "alexandr.bezarov@gmail.com"
   },
@@ -167,6 +169,8 @@ This is useful for ignoring dynamic or irrelevant data.
       "id": 2,
       "name": "POST-TEST",
       "spec": {
+        "url": "http://localhost:8080/test/spec/create?specName=POST-TEST",
+        "method": "POST",
         "name": "Alex",
         "email": "alexandr.bezarov@gmail.com"
       },
@@ -182,13 +186,15 @@ This is useful for ignoring dynamic or irrelevant data.
 ## ❌ Example of fail test specification
 ```json
 {
-  "url": "http://localhost:8080/test/spec/create?specName=POST-TEST",
+  "url": "http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST",
   "method": "POST",
   "headers": {
     "Authorization": "Bearer abc123",
     "X-Custom-Header": "test"
   },
   "body": {
+    "url": "http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST",
+    "method": "POST",
     "name": "Alex",
     "email": "alexandr.bezarov@gmail.com"
   },
@@ -196,7 +202,7 @@ This is useful for ignoring dynamic or irrelevant data.
   "expectedMediaType": "application/text",
   "expectedBody": {
     "id": 1,
-    "name": "POST-TEST",
+    "name": "FAIL-POST-TEST",
     "spec": {
       "name": "Alex",
       "email": "alexandr.bezarov@gmail.com"
@@ -228,7 +234,7 @@ This is useful for ignoring dynamic or irrelevant data.
   "specId": 1,
   "overallTestStatus": "----------------FAIL-------------------",
   "log": {
-    "url": "http://localhost:8080/test/spec/create?specName=POST-TEST",
+    "url": "http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST",
     "method": "POST",
     "expectedStatusCode": 400,
     "receivedStatusCode": 200,
@@ -252,7 +258,7 @@ This is useful for ignoring dynamic or irrelevant data.
     ],
     "expectedBody": {
       "id": 1,
-      "name": "POST-TEST",
+      "name": "FAIL-POST-TEST",
       "spec": {
         "name": "Alex",
         "email": "alexandr.bezarov@gmail.com"
@@ -260,7 +266,7 @@ This is useful for ignoring dynamic or irrelevant data.
     },
     "comparedBody": {
       "id": 2,
-      "name": "POST-TEST",
+      "name": "FAIL-POST-TEST",
       "spec": {
         "name": "Alex",
         "email": "alexandr.bezarov@gmail.com"
@@ -269,16 +275,18 @@ This is useful for ignoring dynamic or irrelevant data.
     "bodyCheckResult": "----------------FAIL-------------------",
     "receivedBody": {
       "id": 2,
-      "name": "POST-TEST",
+      "name": "FAIL-POST-TEST",
       "spec": {
+        "url": "http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST",
+        "method": "POST",
         "name": "Alex",
         "email": "alexandr.bezarov@gmail.com"
       },
-      "createdAt": "2025-07-27T14:50:22"
+      "createdAt": "2025-07-31T12:09:03"
     }
   },
-  "startedAt": "2025-07-27T14:50:21",
-  "finishedAt": "2025-07-27T14:50:23"
+  "startedAt": "2025-07-31T12:09:03",
+  "finishedAt": "2025-07-31T12:09:04"
 }
 ```
 ---

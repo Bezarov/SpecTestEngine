@@ -1,4 +1,4 @@
-package com.example.spectestengine.validation;
+package com.example.spectestengine.validation.validator;
 
 import static com.example.spectestengine.utils.Constants.*;
 
