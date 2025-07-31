@@ -13,11 +13,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import static com.example.spectestengine.utils.Constants.MAX_QUEUE_SIZE;
+
 @Slf4j
 @Component
 public class TestRunQueue {
-    private static final int MAX_QUEUE_SIZE = 1000;
-
     private final Map<String, BlockingQueue<Runnable>> asynchronousQueue = new ConcurrentHashMap<>();
     private final Map<String, Future<?>> dispatchers = new ConcurrentHashMap<>();
     private final ExecutorService dispatcherExecutor = Executors.newVirtualThreadPerTaskExecutor();

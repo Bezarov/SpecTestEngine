@@ -9,7 +9,7 @@ import com.example.spectestengine.engine.handler.StatusCodeCheckHandler;
 import com.example.spectestengine.engine.handler.TestCheckHandler;
 import com.example.spectestengine.model.TestRunEntity;
 import com.example.spectestengine.model.TestSpecEntity;
-import com.example.spectestengine.validation.SpecValidator;
+import com.example.spectestengine.validation.validator.SpecValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -74,8 +74,7 @@ public class TestRunEngine {
         } catch (Exception exception) {
             log.warn("Exception occurred while executing test run", exception);
             overallTestStatus = ERROR;
-            resultLog.put("resultError", REST_RUN_ERROR);
-            resultLog.put("error-message", exception.getCause().getMessage());
+            resultLog.put("resultError", TEST_RUN_ERROR);
         }
 
         LocalDateTime finishedAt = LocalDateTime.now();

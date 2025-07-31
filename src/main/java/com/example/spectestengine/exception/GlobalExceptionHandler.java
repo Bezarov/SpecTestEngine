@@ -1,20 +1,25 @@
 package com.example.spectestengine.exception;
 
 import com.example.spectestengine.dto.ErrorResponseDTO;
+import com.example.spectestengine.dto.ErrorValidationDTO;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @ControllerAdvice
 @Slf4j
-public class RestExceptionHandler {
+public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponseDTO> handleResponseStatusException(ResponseStatusException exception, HttpServletRequest request) {
@@ -25,10 +30,27 @@ public class RestExceptionHandler {
                 LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS),
                 exception.getStatusCode().toString(),
                 exception.getReason(),
-                request.getRequestURI()
-        );
+                request.getRequestURI());
 
         return ResponseEntity.status(exception.getStatusCode()).body(errorResponse);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorValidationDTO> handleHandlerMethodValidationException(HandlerMethodValidationException exception, HttpServletRequest request) {
+        Set<String> errorMessages = exception.getValueResults().stream()
+                .flatMap(validationResult -> validationResult.getResolvableErrors().stream())
+                .map(MessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.toSet());
+
+        ErrorValidationDTO errorValidationResponse = new ErrorValidationDTO(
+                LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS),
+                HttpStatus.BAD_REQUEST.toString(),
+                errorMessages,
+                request.getRequestURI());
+
+        log.warn("HandlerMethodValidationException was intercepted and relayed, message: '{}'", errorMessages);
+
+        return ResponseEntity.badRequest().body(errorValidationResponse);
     }
 
     @ExceptionHandler(InvalidSpecException.class)
@@ -39,8 +61,7 @@ public class RestExceptionHandler {
                 LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS),
                 HttpStatus.BAD_REQUEST.toString(),
                 invalidSpecException.getMessage(),
-                request.getRequestURI()
-        );
+                request.getRequestURI());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }

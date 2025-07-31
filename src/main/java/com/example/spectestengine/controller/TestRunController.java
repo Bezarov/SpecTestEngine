@@ -2,12 +2,8 @@ package com.example.spectestengine.controller;
 
 import com.example.spectestengine.dto.TestRunResultDTO;
 import com.example.spectestengine.service.HTTPTestSpecService;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import com.example.spectestengine.validation.annotation.ValidSpecId;
+import com.example.spectestengine.validation.annotation.ValidSpecName;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,12 +37,7 @@ public class TestRunController {
     }
 
     @GetMapping("/by-id/{specId}")
-    public ResponseEntity<TestRunResultDTO> runById(
-            @PathVariable
-            @NotBlank(message = "Spec name cannot be blank")
-            @Size(min = 1, max = 255, message = "Spec name must be between 1 and 255 characters")
-            @Pattern(regexp = "^[a-zA-Z0-9_\\-\\s]+$", message = "Spec name can only contain letters, numbers, spaces, hyphens and underscores")
-            Long specId) {
+    public ResponseEntity<TestRunResultDTO> runById(@PathVariable @ValidSpecId Long specId) {
         log.debug("Received GET request to RUN test specification with id: '{}'", specId);
         TestRunResultDTO resultDTO = httpTestSpecService.runTestBySpecId(specId);
         log.debug(RESPONSE_LOG, resultDTO);
@@ -54,12 +45,7 @@ public class TestRunController {
     }
 
     @GetMapping("/by-name/{specName}")
-    public ResponseEntity<TestRunResultDTO> runByName(
-            @PathVariable
-            @NotBlank(message = "Spec name cannot be blank")
-            @Size(min = 1, max = 255, message = "Spec name must be between 1 and 255 characters")
-            @Pattern(regexp = "^[a-zA-Z0-9_\\-\\s]+$", message = "Spec name can only contain letters, numbers, spaces, hyphens and underscores")
-            String specName) {
+    public ResponseEntity<TestRunResultDTO> runByName(@PathVariable @ValidSpecName String specName) {
         log.debug("Received GET request to RUN test specification with name: '{}'", specName);
         TestRunResultDTO resultDTO = httpTestSpecService.runTestWithSpecName(specName);
         log.debug(RESPONSE_LOG, resultDTO);
@@ -67,18 +53,8 @@ public class TestRunController {
     }
 
     @GetMapping("/in-range")
-    public ResponseEntity<List<TestRunResultDTO>> runInRange(
-            @RequestParam
-            @NotNull(message = "From ID cannot be null")
-            @Positive(message = "From ID must be positive")
-            @Max(value = Long.MAX_VALUE, message = "From ID is too large")
-            Long fromId,
-
-            @RequestParam
-            @NotNull(message = "To ID cannot be null")
-            @Positive(message = "To ID must be positive")
-            @Max(value = Long.MAX_VALUE, message = "To ID is too large")
-            Long toId) {
+    public ResponseEntity<List<TestRunResultDTO>> runInRange(@RequestParam @ValidSpecId Long fromId,
+                                                             @RequestParam @ValidSpecId Long toId) {
         log.debug("Received GET request to RUN in range tests specification from id: '{}', to id: '{}'", fromId, toId);
         if (fromId > toId) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "'fromId' must be less or equal than 'toId'");

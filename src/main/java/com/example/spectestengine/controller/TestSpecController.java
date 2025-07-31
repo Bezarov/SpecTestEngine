@@ -1,16 +1,12 @@
 package com.example.spectestengine.controller;
 
-import com.example.spectestengine.dto.TestRunResultDTO;
 import com.example.spectestengine.dto.TestSpecDTO;
 import com.example.spectestengine.dto.TestSpecWithRunsDTO;
 import com.example.spectestengine.service.HTTPTestSpecService;
-import com.example.spectestengine.validation.SpecValidator;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import com.example.spectestengine.validation.annotation.ValidSpecId;
+import com.example.spectestengine.validation.annotation.ValidSpecJson;
+import com.example.spectestengine.validation.annotation.ValidSpecName;
+import com.example.spectestengine.validation.validator.SpecValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -38,32 +34,16 @@ public class TestSpecController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<TestSpecDTO> createSpec(
-            @RequestParam
-            @NotBlank(message = "Spec name cannot be blank")
-            @Size(min = 1, max = 255, message = "Spec name must be between 1 and 255 characters")
-            @Pattern(regexp = "^[a-zA-Z0-9_\\-\\s]+$", message = "Spec name can only contain letters, numbers, spaces, hyphens and underscores")
-            String specName,
-
-            @RequestBody
-            @NotBlank(message = "Specification JSON cannot be blank")
-            @Size(min = 10, max = 10000, message = "Specification JSON must be between 10 and 10000 characters")
-            String specJson) {
+    public ResponseEntity<TestSpecDTO> createSpec(@RequestParam @ValidSpecName String specName,
+                                                  @RequestBody @ValidSpecJson String specJson) {
         log.debug("Received POST request to create test with name: '{}' and specification: '{}'", specName, specJson);
-        SpecValidator.validate(specJson);
-
         TestSpecDTO testSpecDTO = httpTestSpecService.createSpec(specName, specJson);
         log.debug(RESPONSE_LOG, testSpecDTO);
         return ResponseEntity.ok(testSpecDTO);
     }
 
     @GetMapping("/by-id/{specId}")
-    public ResponseEntity<TestSpecDTO> getSpecById(
-            @PathVariable
-            @NotNull(message = "Spec ID cannot be null")
-            @Positive(message = "Spec ID must be positive")
-            @Max(value = Long.MAX_VALUE, message = "Spec ID is too large")
-            Long specId) {
+    public ResponseEntity<TestSpecDTO> getSpecById(@PathVariable @ValidSpecId Long specId) {
         log.debug("Received GET request to get test specification with id: '{}'", specId);
         TestSpecDTO testSpecDTO = httpTestSpecService.getSpecById(specId);
         log.debug(RESPONSE_LOG, testSpecDTO);
@@ -71,11 +51,7 @@ public class TestSpecController {
     }
 
     @GetMapping("/by-name/{specName}")
-    public ResponseEntity<TestSpecDTO> getSpecByName(
-            @PathVariable
-            @NotBlank(message = "Spec name cannot be blank")
-            @Size(min = 1, max = 255, message = "Spec name must be between 1 and 255 characters")
-            String specName) {
+    public ResponseEntity<TestSpecDTO> getSpecByName(@PathVariable @ValidSpecName String specName) {
         log.debug("Received GET request to get test specification with name: '{}'", specName);
         TestSpecDTO testSpecDTO = httpTestSpecService.getSpecByName(specName);
         log.debug(RESPONSE_LOG, testSpecDTO);
@@ -91,12 +67,7 @@ public class TestSpecController {
     }
 
     @GetMapping("/with-runs/{specId}")
-    public ResponseEntity<TestSpecWithRunsDTO> getSpecWithRunsById(
-            @PathVariable
-            @NotNull(message = "Spec ID cannot be null")
-            @Positive(message = "Spec ID must be positive")
-            @Max(value = Long.MAX_VALUE, message = "Spec ID is too large")
-            Long specId) {
+    public ResponseEntity<TestSpecWithRunsDTO> getSpecWithRunsById(@PathVariable @ValidSpecId Long specId) {
         log.debug("Received GET request to get test specification with run results: '{}'", specId);
         TestSpecWithRunsDTO testSpecWithRunsDTO = httpTestSpecService.getSpecWithRuns(specId);
         log.debug(RESPONSE_LOG, testSpecWithRunsDTO);
@@ -104,51 +75,25 @@ public class TestSpecController {
     }
 
     @PutMapping("/by-id")
-    public ResponseEntity<TestSpecDTO> updateSpecById(
-            @RequestParam
-            @NotNull(message = "Spec ID cannot be null")
-            @Positive(message = "Spec ID must be positive")
-            @Max(value = Long.MAX_VALUE, message = "Spec ID is too large")
-            Long specId,
-
-            @RequestBody
-            @NotBlank(message = "Specification JSON cannot be blank")
-            @Size(min = 10, max = 10000, message = "Specification JSON must be between 10 and 10000 characters")
-            String specJson) {
+    public ResponseEntity<TestSpecDTO> updateSpecById(@RequestParam @ValidSpecId Long specId,
+                                                      @RequestBody @ValidSpecJson String specJson) {
         log.debug("Received PUT request to update test specification: '{}' with spec id: '{}'", specJson, specId);
-        SpecValidator.validate(specJson);
-
         TestSpecDTO testSpecEntity = httpTestSpecService.updateSpecById(specId, specJson);
         log.debug(RESPONSE_LOG, testSpecEntity);
         return ResponseEntity.ok(testSpecEntity);
     }
 
     @PutMapping("/by-name")
-    public ResponseEntity<TestSpecDTO> updateSpecByName(
-            @RequestParam
-            @NotBlank(message = "Spec name cannot be blank")
-            @Size(min = 1, max = 255, message = "Spec name must be between 1 and 255 characters")
-            String specName,
-
-            @RequestBody
-            @NotBlank(message = "Specification JSON cannot be blank")
-            @Size(min = 10, max = 10000, message = "Specification JSON must be between 10 and 10000 characters")
-            String specJson) {
+    public ResponseEntity<TestSpecDTO> updateSpecByName(@RequestParam @ValidSpecName String specName,
+                                                        @RequestBody @ValidSpecJson String specJson) {
         log.debug("Received PUT request to update test specification: '{}' with spec name: '{}'", specJson, specName);
-        SpecValidator.validate(specJson);
-
         TestSpecDTO testSpecEntity = httpTestSpecService.updateSpecByName(specName, specJson);
         log.debug(RESPONSE_LOG, testSpecEntity);
         return ResponseEntity.ok(testSpecEntity);
     }
 
     @DeleteMapping("/by-id")
-    public ResponseEntity<TestSpecDTO> deleteSpecById(
-            @RequestParam
-            @NotNull(message = "Spec ID cannot be null")
-            @Positive(message = "Spec ID must be positive")
-            @Max(value = Long.MAX_VALUE, message = "Spec ID is too large")
-            Long specId) {
+    public ResponseEntity<TestSpecDTO> deleteSpecById(@RequestParam @ValidSpecId Long specId) {
         log.debug("Received DELETE request to remove test specification with spec id: '{}'", specId);
         TestSpecDTO testSpecDTO = httpTestSpecService.deleteSpecById(specId);
         log.debug(RESPONSE_LOG, testSpecDTO);
@@ -156,11 +101,7 @@ public class TestSpecController {
     }
 
     @DeleteMapping("/by-name")
-    public ResponseEntity<TestSpecDTO> deleteSpecByName(
-            @RequestParam
-            @NotBlank(message = "Spec name cannot be blank")
-            @Size(min = 1, max = 255, message = "Spec name must be between 1 and 255 characters")
-            String specName) {
+    public ResponseEntity<TestSpecDTO> deleteSpecByName(@RequestParam @ValidSpecName String specName) {
         log.debug("Received DELETE request to remove test specification with spec name: '{}'", specName);
         TestSpecDTO testSpecDTO = httpTestSpecService.deleteSpecByName(specName);
         log.debug(RESPONSE_LOG, testSpecDTO);
