@@ -12,14 +12,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@NotBlank(message = "Specification JSON cannot be blank")
-@Size(min = 10, max = 10000, message = "Specification JSON must be between 10 and 10000 characters")
+@NotBlank(message = "Specification cannot be blank")
+@Size(min = 10, max = 10000, message = "Specification must be between 10 and 10000 characters")
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = AnnotationSpecValidator.class)
 @Documented
-public @interface ValidSpecJson {
-    String message() default "Invalid specification JSON";
+public @interface ValidSpec {
+    String message() default "Invalid input specification";
 
     Class<?>[] groups() default {};
 

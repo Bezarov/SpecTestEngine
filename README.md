@@ -1,6 +1,6 @@
 # 🧪 SpecTestEngine
 
-**SpecTestEngine** is a lightweight REST API test runner that executes HTTP tests based on simple JSON specifications.
+**SpecTestEngine** is a lightweight REST API test runner that executes HTTP tests based on simple **JSON or YAML** specifications.
 
 ---
 
@@ -17,11 +17,15 @@
     - Sequential execution per single URL (FIFO)
 - ✅ Detailed run logs for every test execution
 - ✅ Full CRUD for saving specifications and results
+- ✅ Supports **JSON and YAML** formats for specs and test results
+
 - ✅ Powered by **Spring Boot**, **RestAssured**, and **Java 21 Virtual Threads**
 
 ---
 
 ## 📑 API Test Specification
+> ℹ️ Test specs can be written in either **JSON** or **YAML** format.  
+> The response will be returned in the same format as the spec.
 
 | Field                      | Description                                                                                              |
 |----------------------------|----------------------------------------------------------------------------------------------------------|
@@ -40,7 +44,7 @@
 
 ## ⚙️ How it works
 
-1. Parses the JSON specification.
+1. Parses the specification (JSON or YAML)
 2. Builds an HTTP request with **headers** and **body** if provided.
 3. Executes the request using **RestAssured**.
 4. Runs the following checks:
@@ -75,8 +79,181 @@ This is useful for ignoring dynamic or irrelevant data.
     { "expectedJsonPath": "data.id", "expectedJsonValue": "123" },
     { "expectedJsonPath": "data.name", "expectedJsonValue": "Alex" }
   ]
+
 ---
-## ✅ Example of success test specification
+
+## ⚡ Execution Queue
+- All incoming test runs are added to a queue based on the request URL.
+- Tasks for the same URL run one by one in the order they arrive.
+- Tasks for different URLs run in parallel using Virtual Threads.
+
+---
+## ✅ Example of YAML formatted success test specification
+```yaml
+url: "http://localhost:8080/test/spec/create?specName=POST-TEST"
+method: "POST"
+headers:
+  Authorization: "Bearer abc123"
+  X-Custom-Header: "test"
+body:
+  url: "http://localhost:8080/test/spec/create?specName=POST-TEST"
+  method: "POST"
+  name: "Alex"
+  email: "alexandr.bezarov@gmail.com"
+expectedStatusCode: 200
+expectedMediaType: "application/json"
+expectedBody:
+  id: 1
+  name: "POST-TEST"
+  spec:
+    name: "Alex"
+    email: "alexandr.bezarov@gmail.com"
+  createdAt: "2025-07-27T14:28:18"
+excludedBodyFields:
+  - "id"
+  - "createdAt"
+excludeAllOtherBodyFields: false
+expectedBodyJsonPaths:
+  - expectedJsonPath: "spec.name"
+    expectedJsonValue: "Alex"
+  - expectedJsonPath: "spec.email"
+    expectedJsonValue: "alexandr.bezarov@gmail.com"
+```
+## ✅ Example of YAML formatted success test run log
+
+```yaml
+---
+runId: 1
+specId: 1
+overallTestStatus: "----------------PASS-------------------"
+testResultLog:
+  url: "http://localhost:8080/test/spec/create?specName=POST-TEST"
+  method: "POST"
+  expectedStatusCode: 200
+  receivedStatusCode: 200
+  statusCodeCheckResult: "----------------PASS-------------------"
+  expectedMediaType: "application/json"
+  receivedMediaType: "application/json"
+  mediaTypeCheckResult: "----------------PASS-------------------"
+  expectedJsonPathCheck:
+    - expectedJsonPath: "spec.name"
+      expectedJsonValue: "Alex"
+      receivedJsonValue: "Alex"
+      bodyJsonPathValueCheckResult: "----------------PASS-------------------"
+    - expectedJsonPath: "spec.email"
+      expectedJsonValue: "alexandr.bezarov@gmail.com"
+      receivedJsonValue: "alexandr.bezarov@gmail.com"
+      bodyJsonPathValueCheckResult: "----------------PASS-------------------"
+  expectedBody:
+    name: "POST-TEST"
+    spec:
+      name: "Alex"
+      email: "alexandr.bezarov@gmail.com"
+  comparedBody:
+    name: "POST-TEST"
+    spec:
+      name: "Alex"
+      email: "alexandr.bezarov@gmail.com"
+  bodyCheckResult: "----------------PASS-------------------"
+  receivedBody:
+    id: 2
+    name: "POST-TEST"
+    spec:
+      url: "http://localhost:8080/test/spec/create?specName=POST-TEST"
+      method: "POST"
+      name: "Alex"
+      email: "alexandr.bezarov@gmail.com"
+    createdAt: "2025-08-07T14:26:53"
+startedAt: "2025-08-07T14:26:52"
+finishedAt: "2025-08-07T14:26:53"
+
+```
+---
+## ❌ Example of YAML formatted fail test specification
+```yaml
+---
+url: http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST
+method: POST
+headers:
+  Authorization: Bearer abc123
+  X-Custom-Header: test
+body:
+  url: http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST
+  method: POST
+  name: Alex
+  email: alexandr.bezarov@gmail.com
+expectedStatusCode: 400
+expectedMediaType: application/text
+expectedBody:
+  id: 1
+  name: FAIL-POST-TEST
+  spec:
+    name: Alex
+    email: alexandr.bezarov@gmail.com
+  createdAt: '2025-07-27T14:28:18'
+excludedBodyFields:
+  - createdAt
+excludeAllOtherBodyFields: false
+expectedBodyJsonPaths:
+  - expectedJsonPath: spec.name
+    expectedJsonValue: Alex1
+  - expectedJsonPath: spec.email
+    expectedJsonValue: alexandr.bezarov@gmail.com
+```
+## ❌ Example of YAML formatted fail test run log
+
+```yaml
+---
+runId: 1
+specId: 1
+overallTestStatus: "----------------FAIL-------------------"
+testResultLog:
+  url: "http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST"
+  method: "POST"
+  expectedStatusCode: 400
+  receivedStatusCode: 200
+  statusCodeCheckResult: "----------------FAIL-------------------"
+  expectedMediaType: "application/text"
+  receivedMediaType: "application/json"
+  mediaTypeCheckResult: "----------------FAIL-------------------"
+  expectedJsonPathCheck:
+    - expectedJsonPath: "spec.name"
+      expectedJsonValue: "Alex1"
+      receivedJsonValue: "Alex"
+      bodyJsonPathValueCheckResult: "----------------FAIL-------------------"
+    - expectedJsonPath: "spec.email"
+      expectedJsonValue: "alexandr.bezarov@gmail.com"
+      receivedJsonValue: "alexandr.bezarov@gmail.com"
+      bodyJsonPathValueCheckResult: "----------------PASS-------------------"
+  expectedBody:
+    id: 1
+    name: "FAIL-POST-TEST"
+    spec:
+      name: "Alex"
+      email: "alexandr.bezarov@gmail.com"
+  comparedBody:
+    id: 2
+    name: "FAIL-POST-TEST"
+    spec:
+      name: "Alex"
+      email: "alexandr.bezarov@gmail.com"
+  bodyCheckResult: "----------------FAIL-------------------"
+  receivedBody:
+    id: 2
+    name: "FAIL-POST-TEST"
+    spec:
+      url: "http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST"
+      method: "POST"
+      name: "Alex"
+      email: "alexandr.bezarov@gmail.com"
+    createdAt: "2025-08-07T14:32:02"
+startedAt: "2025-08-07T14:32:01"
+finishedAt: "2025-08-07T14:32:03"
+```
+
+---
+
+## ✅ Example of JSON formatted success test specification
 ```json
 {
   "url": "http://localhost:8080/test/spec/create?specName=POST-TEST",
@@ -120,7 +297,7 @@ This is useful for ignoring dynamic or irrelevant data.
 }
 ```
 
-## ✅ Example of success test run log
+## ✅ Example of JSON formatted success test run log
 
 ```json
 {
@@ -183,7 +360,7 @@ This is useful for ignoring dynamic or irrelevant data.
 ```
 
 ---
-## ❌ Example of fail test specification
+## ❌ Example of JSON formatted fail test specification
 ```json
 {
   "url": "http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST",
@@ -226,14 +403,14 @@ This is useful for ignoring dynamic or irrelevant data.
 }
 ```
 
-## ❌ Example of fail test run log
+## ❌ Example of JSON formatted fail test run log
 
 ```json
 {
   "runId": 1,
   "specId": 1,
   "overallTestStatus": "----------------FAIL-------------------",
-  "log": {
+  "testResultLog": {
     "url": "http://localhost:8080/test/spec/create?specName=FAIL-POST-TEST",
     "method": "POST",
     "expectedStatusCode": 400,
@@ -291,12 +468,6 @@ This is useful for ignoring dynamic or irrelevant data.
 ```
 ---
 
-## ⚡ Execution Queue
-- All incoming test runs are added to a queue based on the request URL.
-- Tasks for the same URL run one by one in the order they arrive.
-- Tasks for different URLs run in parallel using Virtual Threads.
-
----
 ## 🎯 TODO List for Future Improvements
 
 - 🔒 Add authentication and role-based access control
@@ -305,6 +476,8 @@ This is useful for ignoring dynamic or irrelevant data.
 - 🧩 Add more matchers and check handlers (XML, schema validation, etc.)
 
 ---
+
 ## 🧑‍💻 Contributing
 - Feel free to fork, extend and open PRs!
+- Add support for more spec formats (XML?)
 - Ideas: more matchers, authentication flows, CI/CD integration, dashboards, cloud-native execution.

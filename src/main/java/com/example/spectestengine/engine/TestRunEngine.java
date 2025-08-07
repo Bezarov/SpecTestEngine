@@ -9,6 +9,7 @@ import com.example.spectestengine.engine.handler.StatusCodeCheckHandler;
 import com.example.spectestengine.engine.handler.TestCheckHandler;
 import com.example.spectestengine.model.TestRunEntity;
 import com.example.spectestengine.model.TestSpecEntity;
+import com.example.spectestengine.utils.SpecFormatMapper;
 import com.example.spectestengine.validation.validator.SpecValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +46,7 @@ public class TestRunEngine {
 
     public TestRunEntity buildTestRun(TestSpecEntity specEntity) {
         log.info("Building test run");
+        specEntity.setSpec(SpecFormatMapper.normalizeToJson(specEntity.getSpec()));
         var validatedSpec = SpecValidator.validate(specEntity.getSpec());
         CompletableFuture<TestRunEntity> future = new CompletableFuture<>();
 
@@ -82,7 +84,7 @@ public class TestRunEngine {
         return TestRunEntity.builder()
                 .spec(specEntity)
                 .status(overallTestStatus)
-                .log(resultLog.toString())
+                .testResultLog(resultLog.toString())
                 .startedAt(startedAt)
                 .finishedAt(finishedAt)
                 .build();

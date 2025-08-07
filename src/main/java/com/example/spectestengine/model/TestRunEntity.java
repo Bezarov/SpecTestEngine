@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -33,8 +34,9 @@ public class TestRunEntity {
 
     private String status;
 
+    @Lob
     @Column(columnDefinition = "text")
-    private String log;
+    private String testResultLog;
 
     private LocalDateTime startedAt;
 

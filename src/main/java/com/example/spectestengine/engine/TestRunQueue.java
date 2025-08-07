@@ -27,7 +27,6 @@ public class TestRunQueue {
                 new LinkedBlockingQueue<>(MAX_QUEUE_SIZE));
 
         if (synchronizedQueue.offer(task)) {
-            synchronizedQueue.add(task);
             dispatchers.computeIfAbsent(url, urlAsKey -> dispatcherExecutor.submit(() ->
                     runDispatcher(synchronizedQueue)));
         } else {
