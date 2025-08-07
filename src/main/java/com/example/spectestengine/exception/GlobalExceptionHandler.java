@@ -66,6 +66,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
+    @ExceptionHandler(UnsupportedFormatException.class)
+    public ResponseEntity<ErrorResponseDTO> handleUnsupportedFormatException(UnsupportedFormatException unsupportedFormatException, HttpServletRequest request) {
+        log.info("UnsupportedFormatException was intercepted and relayed, message: '{}'", unsupportedFormatException.getMessage());
+
+        ErrorResponseDTO errorResponse = new ErrorResponseDTO(
+                LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS),
+                HttpStatus.BAD_REQUEST.toString(),
+                unsupportedFormatException.getMessage(),
+                request.getRequestURI());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
     @ExceptionHandler(Throwable.class)
     public ResponseEntity<String> handleGenericError(Throwable throwable) {
         StackTraceElement traceElement = throwable.getStackTrace()[0];

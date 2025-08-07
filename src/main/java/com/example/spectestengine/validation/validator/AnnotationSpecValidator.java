@@ -1,24 +1,30 @@
 package com.example.spectestengine.validation.validator;
 
 import com.example.spectestengine.exception.InvalidSpecException;
-import com.example.spectestengine.validation.annotation.ValidSpecJson;
+import com.example.spectestengine.utils.SpecFormatMapper;
+import com.example.spectestengine.validation.annotation.ValidSpec;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class AnnotationSpecValidator implements ConstraintValidator<ValidSpecJson, String> {
+public class AnnotationSpecValidator implements ConstraintValidator<ValidSpec, String> {
     @Override
-    public boolean isValid(String jsonSpec, ConstraintValidatorContext context) {
+    public boolean isValid(String rawSpec, ConstraintValidatorContext context) {
         try {
-            SpecValidator.validate(jsonSpec);
+            /*
+            Since the work and execution of the test is supposed to be in json format,
+            it is necessary to normalize and validate rawSpec here
+             */
+            String normalizedSpec = SpecFormatMapper.normalizeToJson(rawSpec);
+            SpecValidator.validate(normalizedSpec);
             return true;
         } catch (InvalidSpecException exception) {
             addConstraintViolation(context, exception.getMessage());
             return false;
         } catch (Exception exception) {
             log.error("Unexpected error during JSON validation", exception);
-            addConstraintViolation(context, "Invalid JSON specification format");
+            addConstraintViolation(context, "Invalid specification format");
             return false;
         }
     }

@@ -2,12 +2,13 @@ package com.example.spectestengine.controller;
 
 import com.example.spectestengine.dto.TestSpecDTO;
 import com.example.spectestengine.dto.TestSpecWithRunsDTO;
-import com.example.spectestengine.service.HTTPTestSpecService;
+import com.example.spectestengine.model.SpecFormat;
+import com.example.spectestengine.service.TestSpecService;
 import com.example.spectestengine.validation.annotation.ValidSpecId;
-import com.example.spectestengine.validation.annotation.ValidSpecJson;
+import com.example.spectestengine.validation.annotation.ValidSpec;
 import com.example.spectestengine.validation.annotation.ValidSpecName;
-import com.example.spectestengine.validation.validator.SpecValidator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,90 +22,91 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/test/spec")
-@Slf4j
 public class TestSpecController {
     private static final String RESPONSE_LOG = "Request was successfully processed and response was sent: '{}'";
 
-    private final HTTPTestSpecService httpTestSpecService;
+    private final TestSpecService testSpecService;
 
-    public TestSpecController(HTTPTestSpecService httpTestSpecService) {
-        this.httpTestSpecService = httpTestSpecService;
+    public TestSpecController(TestSpecService testSpecService) {
+        this.testSpecService = testSpecService;
     }
 
     @PostMapping("/create")
     public ResponseEntity<TestSpecDTO> createSpec(@RequestParam @ValidSpecName String specName,
-                                                  @RequestBody @ValidSpecJson String specJson) {
-        log.debug("Received POST request to create test with name: '{}' and specification: '{}'", specName, specJson);
-        TestSpecDTO testSpecDTO = httpTestSpecService.createSpec(specName, specJson);
+                                                  @RequestBody @ValidSpec String rawSpec) {
+        log.debug("Received POST request to create test with name: '{}' and specification: '{}'", specName, rawSpec);
+        TestSpecDTO testSpecDTO = testSpecService.createSpec(specName, rawSpec);
         log.debug(RESPONSE_LOG, testSpecDTO);
-        return ResponseEntity.ok(testSpecDTO);
+        return ResponseEntity.ok().contentType(testSpecDTO.mediaType()).body(testSpecDTO);
     }
 
     @GetMapping("/by-id/{specId}")
     public ResponseEntity<TestSpecDTO> getSpecById(@PathVariable @ValidSpecId Long specId) {
         log.debug("Received GET request to get test specification with id: '{}'", specId);
-        TestSpecDTO testSpecDTO = httpTestSpecService.getSpecById(specId);
+        TestSpecDTO testSpecDTO = testSpecService.getSpecById(specId);
         log.debug(RESPONSE_LOG, testSpecDTO);
-        return ResponseEntity.ok(testSpecDTO);
+        return ResponseEntity.ok().contentType(testSpecDTO.mediaType()).body(testSpecDTO);
     }
 
     @GetMapping("/by-name/{specName}")
     public ResponseEntity<TestSpecDTO> getSpecByName(@PathVariable @ValidSpecName String specName) {
         log.debug("Received GET request to get test specification with name: '{}'", specName);
-        TestSpecDTO testSpecDTO = httpTestSpecService.getSpecByName(specName);
+        TestSpecDTO testSpecDTO = testSpecService.getSpecByName(specName);
         log.debug(RESPONSE_LOG, testSpecDTO);
-        return ResponseEntity.ok(testSpecDTO);
+        return ResponseEntity.ok().contentType(testSpecDTO.mediaType()).body(testSpecDTO);
     }
 
     @GetMapping
-    public ResponseEntity<List<TestSpecDTO>> getAll() {
+    public ResponseEntity<List<TestSpecDTO>> getAll(@RequestParam(defaultValue = "JSON") String format) {
         log.debug("Received GET request to get all test specification");
-        List<TestSpecDTO> specDTOList = httpTestSpecService.getAllTestSpec();
+        List<TestSpecDTO> specDTOList = testSpecService.getAllTestSpec();
+        MediaType requestedMediaType = SpecFormat.getMediaType(format);
         log.debug(RESPONSE_LOG, specDTOList);
-        return ResponseEntity.ok(specDTOList);
+        return ResponseEntity.ok().contentType(requestedMediaType).body(specDTOList);
     }
 
     @GetMapping("/with-runs/{specId}")
     public ResponseEntity<TestSpecWithRunsDTO> getSpecWithRunsById(@PathVariable @ValidSpecId Long specId) {
         log.debug("Received GET request to get test specification with run results: '{}'", specId);
-        TestSpecWithRunsDTO testSpecWithRunsDTO = httpTestSpecService.getSpecWithRuns(specId);
+        TestSpecWithRunsDTO testSpecWithRunsDTO = testSpecService.getSpecWithRuns(specId);
         log.debug(RESPONSE_LOG, testSpecWithRunsDTO);
-        return ResponseEntity.ok(testSpecWithRunsDTO);
+        return ResponseEntity.ok().contentType(testSpecWithRunsDTO.mediaType()).body(testSpecWithRunsDTO);
     }
 
     @PutMapping("/by-id")
     public ResponseEntity<TestSpecDTO> updateSpecById(@RequestParam @ValidSpecId Long specId,
-                                                      @RequestBody @ValidSpecJson String specJson) {
-        log.debug("Received PUT request to update test specification: '{}' with spec id: '{}'", specJson, specId);
-        TestSpecDTO testSpecEntity = httpTestSpecService.updateSpecById(specId, specJson);
-        log.debug(RESPONSE_LOG, testSpecEntity);
-        return ResponseEntity.ok(testSpecEntity);
+                                                      @RequestBody @ValidSpec String rawSpec) {
+        log.debug("Received PUT request to update test specification: '{}' with spec id: '{}'", rawSpec, specId);
+        TestSpecDTO testSpecDTO = testSpecService.updateSpecById(specId, rawSpec);
+        log.debug(RESPONSE_LOG, testSpecDTO);
+        return ResponseEntity.ok().contentType(testSpecDTO.mediaType()).body(testSpecDTO);
     }
 
     @PutMapping("/by-name")
     public ResponseEntity<TestSpecDTO> updateSpecByName(@RequestParam @ValidSpecName String specName,
-                                                        @RequestBody @ValidSpecJson String specJson) {
-        log.debug("Received PUT request to update test specification: '{}' with spec name: '{}'", specJson, specName);
-        TestSpecDTO testSpecEntity = httpTestSpecService.updateSpecByName(specName, specJson);
-        log.debug(RESPONSE_LOG, testSpecEntity);
-        return ResponseEntity.ok(testSpecEntity);
+                                                        @RequestBody @ValidSpec String rawSpec) {
+        log.debug("Received PUT request to update test specification: '{}' with spec name: '{}'", rawSpec, specName);
+        TestSpecDTO testSpecDTO = testSpecService.updateSpecByName(specName, rawSpec);
+        log.debug(RESPONSE_LOG, testSpecDTO);
+        return ResponseEntity.ok().contentType(testSpecDTO.mediaType()).body(testSpecDTO);
     }
 
     @DeleteMapping("/by-id")
     public ResponseEntity<TestSpecDTO> deleteSpecById(@RequestParam @ValidSpecId Long specId) {
         log.debug("Received DELETE request to remove test specification with spec id: '{}'", specId);
-        TestSpecDTO testSpecDTO = httpTestSpecService.deleteSpecById(specId);
+        TestSpecDTO testSpecDTO = testSpecService.deleteSpecById(specId);
         log.debug(RESPONSE_LOG, testSpecDTO);
-        return ResponseEntity.ok(testSpecDTO);
+        return ResponseEntity.ok().contentType(testSpecDTO.mediaType()).body(testSpecDTO);
     }
 
     @DeleteMapping("/by-name")
     public ResponseEntity<TestSpecDTO> deleteSpecByName(@RequestParam @ValidSpecName String specName) {
         log.debug("Received DELETE request to remove test specification with spec name: '{}'", specName);
-        TestSpecDTO testSpecDTO = httpTestSpecService.deleteSpecByName(specName);
+        TestSpecDTO testSpecDTO = testSpecService.deleteSpecByName(specName);
         log.debug(RESPONSE_LOG, testSpecDTO);
-        return ResponseEntity.ok(testSpecDTO);
+        return ResponseEntity.ok().contentType(testSpecDTO.mediaType()).body(testSpecDTO);
     }
 }
