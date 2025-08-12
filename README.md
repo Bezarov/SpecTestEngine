@@ -37,7 +37,7 @@
 | **headers**                   | *(Optional)* Key-value map for HTTP headers                                                          |
 | **body**                      | *(Optional)* JSON body for `POST` or `PUT` requests                                                  |
 | **expectedStatusCode**        | Expected HTTP response status code                                                                   |
-| **expectedMediaType**         | *(Optional)* Expected `Content-Type` header                                                          |
+| **expectedContentType**         | *(Optional)* Expected `Content-Type` header                                                          |
 | **expectedBody**              | *(Optional)* JSON body to compare                                                                    |
 | **excludedBodyFields**        | *(Optional)* Array of JSON fields to ignore during body comparison                                   |
 | **excludeAllOtherBodyFields** | *(Optional)* If `true`, trims the actual response body to only keep fields present in `expectedBody` |
