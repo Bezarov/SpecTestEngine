@@ -18,9 +18,9 @@ repositories {
     maven { url = 'https://repo.spring.io/snapshot' }
 }
 
-configurations {
-    configureEach {
-        exclude group: 'commons-logging', module: 'commons-logging'
+configurations.configureEach {
+    resolutionStrategy {
+        force 'org.apache.commons:commons-lang3:3.18.0'
     }
 }
 
@@ -30,11 +30,13 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'io.rest-assured:rest-assured:5.5.5'
+    implementation 'org.apache.commons:commons-lang3:3.18.0'
     implementation 'org.projectlombok:lombok:1.18.38'
     annotationProcessor 'org.projectlombok:lombok:1.18.38'
     implementation 'org.postgresql:postgresql:42.7.7'
     implementation 'org.springframework.boot:spring-boot-starter-validation:3.5.4'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 }
 
 tasks.named('test') {

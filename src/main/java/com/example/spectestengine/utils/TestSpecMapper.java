@@ -26,6 +26,7 @@ public final class TestSpecMapper {
         return switch (specEntity.getFormat()) {
             case JSON -> SpecFormatMapper.fromJson(specEntity.getSpec());
             case YAML -> SpecFormatMapper.fromYaml(specEntity.getSpec());
+            case XML -> SpecFormatMapper.fromXml(specEntity.getSpec());
         };
     }
 }
