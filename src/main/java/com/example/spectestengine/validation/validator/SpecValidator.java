@@ -3,9 +3,7 @@ package com.example.spectestengine.validation.validator;
 import static com.example.spectestengine.utils.Constants.*;
 
 import com.example.spectestengine.exception.InvalidSpecException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -13,7 +11,6 @@ import java.net.URI;
 
 @Slf4j
 public class SpecValidator {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private SpecValidator() {
         throw new IllegalStateException("Validator class - cannot be instantiated");
@@ -22,9 +19,9 @@ public class SpecValidator {
     public record ValidatedSpec(JsonNode jsonSpecNode, String url, String method) {
     }
 
-    public static ValidatedSpec validate(String jsonSpec) {
-        return parseJsonSpec(jsonSpec)
-                .validateSpecNotEmpty(jsonSpec)
+    public static ValidatedSpec validate(JsonNode jsonSpec) {
+        return getValidationChain(jsonSpec)
+                .validateSpecNotEmpty(jsonSpec.toString())
                 .validateJsonSpecNode()
                 .validateMandatoryFields()
                 .validateHttpMethod()
@@ -36,21 +33,10 @@ public class SpecValidator {
                 .build();
     }
 
-    private static ValidationChain parseJsonSpec(String jsonSpec) {
-        try {
-            JsonNode jsonSpecNode = MAPPER.readTree(jsonSpec);
-            return ValidationChain.builder()
-                    .jsonSpecNode(jsonSpecNode)
-                    .build();
-        } catch (JsonProcessingException exception) {
-            String errorMessage = String.format(
-                    "Failed to parse SPEC at line '%d', column '%d'",
-                    exception.getLocation().getLineNr(),
-                    exception.getLocation().getColumnNr()
-            );
-            log.warn(errorMessage, exception.getMessage());
-            throw new InvalidSpecException(errorMessage);
-        }
+    private static ValidationChain getValidationChain(JsonNode jsonSpecNode) {
+        return ValidationChain.builder()
+                .jsonSpecNode(jsonSpecNode)
+                .build();
     }
 
     @Builder

@@ -7,7 +7,8 @@ import org.springframework.http.MediaType;
 @Getter
 public enum SpecFormat {
     JSON(MediaType.APPLICATION_JSON),
-    YAML(MediaType.APPLICATION_YAML);
+    YAML(MediaType.APPLICATION_YAML),
+    XML(MediaType.APPLICATION_XML);
 
     private final MediaType mediaType;
 

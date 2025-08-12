@@ -8,7 +8,7 @@ import io.restassured.response.Response;
 
 public class StatusCodeCheckHandler implements TestCheckHandler {
     @Override
-    public String handle(JsonNode specification, Response response, ObjectNode resultLog, String handlerStatus) {
+    public String handle(JsonNode specification, JsonNode normalizedResponse, Response response, ObjectNode resultLog, String handlerStatus) {
         if (specification.has(EXPECTED_STATUS_CODE)) {
             int expectedStatusCode = specification.get(EXPECTED_STATUS_CODE).asInt();
             int receivedStatusCode = response.statusCode();

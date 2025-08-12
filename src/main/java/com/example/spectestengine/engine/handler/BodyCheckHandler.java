@@ -17,11 +17,11 @@ public class BodyCheckHandler implements TestCheckHandler {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public String handle(JsonNode specification, Response response, ObjectNode resultLog, String handlerStatus) {
+    public String handle(JsonNode specification, JsonNode normalizedResponse, Response response, ObjectNode resultLog, String handlerStatus) {
         if (specification.has(EXPECTED_BODY)) {
             try {
                 JsonNode expectedBody = specification.get(EXPECTED_BODY).deepCopy();
-                JsonNode receivedBody = objectMapper.readTree(response.getBody().asString());
+                JsonNode receivedBody = normalizedResponse.deepCopy();
 
                 validateJsonBodies(expectedBody, receivedBody);
 
@@ -34,7 +34,7 @@ public class BodyCheckHandler implements TestCheckHandler {
                 boolean isMatch = matches(expectedBody, receivedBody);
                 resultLog.put(BODY_CHECK_RESULT, isMatch ? PASS : FAIL);
 
-                resultLog.set(RECEIVED_BODY, objectMapper.readTree(response.getBody().asString()));
+                resultLog.set(RECEIVED_BODY, normalizedResponse);
                 return isMatch ? handlerStatus : FAIL;
 
             } catch (Exception exception) {
